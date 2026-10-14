@@ -9,6 +9,8 @@ import { setShareProvider } from './store/shareSync';
 import { useNodesStore } from './store/nodesStore';
 import { useSettingsStore } from './store/settingsStore';
 import { useVoicesStore } from './store/voicesStore';
+import { synthesizeText } from './store/poolDeps';
+import { usePlayerStore } from './store/playerStore';
 
 async function bootstrap() {
   const db = await openDb();
@@ -27,6 +29,10 @@ async function bootstrap() {
     pool: useSettingsStore.getState().pool,
     share: useSettingsStore.getState().share,
   }));
+  usePlayerStore.getState().setSynth(async (text) => {
+    const result = await synthesizeText(text);
+    return result.bytes;
+  });
   ReactDOM.createRoot(document.getElementById('root')!).render(
     <React.StrictMode>
       <App />
