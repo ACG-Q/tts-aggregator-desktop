@@ -24,3 +24,6 @@ target
 *.njsproj
 *.sln
 *.sw?
+
+# 本机 workaround：target 移出 Desktop 以绕过安全软件拦截 cl.exe
+.cargo/

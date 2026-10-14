@@ -2,5 +2,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    tmp_desktop_lib::run()
+    tts_aggregator_desktop_lib::run()
 }
