@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { invoke } from '@tauri-apps/api/core';
 import {
   DEFAULT_APP_PREFS, DEFAULT_POOL, DEFAULT_SYNTH, defaultShare,
   type AppPrefs, type PoolConfig, type ShareConfig, type SynthSettings,
@@ -48,6 +49,12 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   async saveShare(share) {
     set({ share });
     await deps().settings.setJson('share_config', share);
+    try {
+      await invoke('share_set_token', { token: share.token });
+    } catch (e) {
+      console.warn('分享 token 同步失败', e);
+    }
+    await notifyShare();
   },
   async saveAppPrefs(appPrefs) {
     set({ appPrefs });
