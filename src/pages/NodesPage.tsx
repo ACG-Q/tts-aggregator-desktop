@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNodesStore } from '../store/nodesStore';
 import { useSettingsStore } from '../store/settingsStore';
 import { isCoolingDown, type CallMode, type TtsNode } from '../types/models';
+import { ImportPanel } from './ImportPanel';
 
 const MODES: [CallMode, string, string][] = [
   ['AUTO', '自动', '按健康度依次尝试，失败自动切换'],
@@ -86,6 +87,8 @@ export function NodesPage() {
           </div>
         </div>
       </div>
+
+      <ImportPanel />
 
       <div className="card">
         <div className="row" style={{ marginBottom: 8 }}>
