@@ -12,7 +12,7 @@ interface NodesState {
   probeProgress: string | null;
   load(): Promise<void>;
   add(input: { baseUrl: string; label: string; apiKey: string | null; source?: NodeSource }): Promise<void>;
-  importRecords(records: { baseUrl: string; label: string }[], source: NodeSource): Promise<void>;
+  importRecords(records: { baseUrl: string; label: string; apiKey?: string | null }[], source: NodeSource): Promise<void>;
   reprobe(node: TtsNode): Promise<void>;
   probeAll(): Promise<void>;
   update(node: TtsNode, origBaseUrl?: string): Promise<void>;
@@ -47,7 +47,7 @@ export const useNodesStore = create<NodesState>((set, get) => ({
     for (const r of records) {
       await deps().nodes.upsert({
         id: newId(), baseUrl: normalizeBaseUrl(r.baseUrl), label: r.label,
-        keyless: false, apiKey: null, health: 'UNKNOWN', lastChecked: 0,
+        keyless: false, apiKey: r.apiKey ?? null, health: 'UNKNOWN', lastChecked: 0,
         defaultVoice: '', voiceCount: 0, failCount: 0, cooldownUntil: 0,
         disabled: false, apiVersion: 'UNKNOWN', source,
       });

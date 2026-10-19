@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
-import { Plus, RefreshCw, Search } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { ListPlus, Plus, RefreshCw, Search } from 'lucide-react';
+import { toast } from 'sonner';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -12,6 +13,8 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Textarea } from '@/components/ui/textarea';
+import { parseBatchLines } from '@/lib/batch';
 import { useNodesStore } from '@/store/nodesStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import { isCoolingDown, type CallMode, type TtsNode } from '@/types/models';
@@ -42,8 +45,15 @@ export function NodesPage() {
   const [err, setErr] = useState<string | null>(null);
   const [q, setQ] = useState('');
   const [deleteFor, setDeleteFor] = useState<TtsNode | null>(null);
+  const [batchOpen, setBatchOpen] = useState(false);
+  const [batchText, setBatchText] = useState('');
 
   useEffect(() => { void st.load(); }, []);
+
+  const batch = useMemo(
+    () => parseBatchLines(batchText, st.nodes.map((n) => n.baseUrl)),
+    [batchText, st.nodes],
+  );
 
   const shown = st.nodes.filter(
     (n) => !q || n.label.includes(q) || n.baseUrl.toLowerCase().includes(q.toLowerCase()),
@@ -92,6 +102,10 @@ export function NodesPage() {
           <Button onClick={openAdd}>
             <Plus className="mr-1 h-4 w-4" />
             添加节点
+          </Button>
+          <Button variant="outline" onClick={() => setBatchOpen(true)}>
+            <ListPlus className="mr-1 h-4 w-4" />
+            批量添加
           </Button>
           <Button variant="outline" onClick={() => void st.probeAll()} disabled={st.probing}>
             <RefreshCw className="mr-1 h-4 w-4" />
@@ -227,6 +241,55 @@ export function NodesPage() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowForm(null)}>取消</Button>
             <Button onClick={() => void submit()}>保存并探测</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={batchOpen} onOpenChange={setBatchOpen}>
+        <DialogContent className="sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>批量添加节点</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Textarea
+              rows={10}
+              placeholder={'每行一条，格式：URL [标签] [API Key]\n（标签和 API Key 可省略，用空格或 Tab 分隔）\n\nhttps://tts.example.com\nhttps://tts2.example.com 我的节点\nhttps://tts3.example.com 备用 sk-abc123'}
+              value={batchText}
+              onChange={(e) => setBatchText(e.target.value)}
+              className="font-mono text-xs"
+            />
+            <div className="flex flex-wrap gap-3 text-xs">
+              <span className="text-success">可添加 {batch.items.length} 条</span>
+              {batch.duplicates.length > 0 && (
+                <span className="text-muted-foreground">重复 {batch.duplicates.length} 条（已忽略）</span>
+              )}
+              {batch.invalid.length > 0 && (
+                <span className="text-destructive">无效 {batch.invalid.length} 行（需以 http:// 或 https:// 开头）</span>
+              )}
+            </div>
+            {batch.invalid.length > 0 && (
+              <div className="max-h-24 overflow-y-auto rounded-md border border-destructive/30 bg-destructive/5 p-2 font-mono text-xs text-destructive">
+                {batch.invalid.map((l, i) => <div key={i}>{l}</div>)}
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBatchOpen(false)}>取消</Button>
+            <Button
+              disabled={batch.items.length === 0}
+              onClick={() => {
+                void st.importRecords(
+                  batch.items.map((i) => ({ baseUrl: i.baseUrl, label: i.label, apiKey: i.apiKey })),
+                  'manual',
+                ).then(() => {
+                  toast.success(`已添加 ${batch.items.length} 个节点，正在探测`);
+                  setBatchText('');
+                  setBatchOpen(false);
+                });
+              }}
+            >
+              添加 {batch.items.length} 条并探测
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
