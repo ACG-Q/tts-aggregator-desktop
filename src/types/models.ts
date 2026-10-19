@@ -56,6 +56,7 @@ export interface Book {
   lastChapter: number;
   lastSegment: number;
   playbackRate: number;
+  chapterCount: number;
 }
 
 export interface BookChapter {

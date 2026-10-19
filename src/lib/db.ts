@@ -255,12 +255,14 @@ export function createSettingsRepo(db: SqlExec): SettingsRepo {
 export interface BookRow {
   id: string; title: string; imported_at: number;
   last_chapter: number; last_segment: number; playback_rate: number;
+  chapter_count: number;
 }
 
 export function rowToBook(r: BookRow): Book {
   return {
     id: r.id, title: r.title, importedAt: r.imported_at,
     lastChapter: r.last_chapter, lastSegment: r.last_segment, playbackRate: r.playback_rate,
+    chapterCount: r.chapter_count,
   };
 }
 
@@ -289,7 +291,10 @@ export interface BooksRepo {
 export function createBooksRepo(db: SqlExec): BooksRepo {
   return {
     async getAll() {
-      const rows = await db.select<BookRow>('SELECT * FROM books ORDER BY imported_at DESC');
+      const rows = await db.select<BookRow>(
+        `SELECT b.*, (SELECT COUNT(*) FROM chapters c WHERE c.book_id = b.id) AS chapter_count
+         FROM books b ORDER BY b.imported_at DESC`,
+      );
       return rows.map(rowToBook);
     },
     async getToc(bookId) {
@@ -317,7 +322,7 @@ export function createBooksRepo(db: SqlExec): BooksRepo {
       if (units.length === 0) throw new Error('未识别到任何内容');
       const book: Book = {
         id: newId(), title, importedAt: Date.now(),
-        lastChapter: 0, lastSegment: 0, playbackRate: 0,
+        lastChapter: 0, lastSegment: 0, playbackRate: 0, chapterCount: units.length,
       };
       await db.execute(
         'INSERT INTO books (id, title, imported_at, last_chapter, last_segment, playback_rate) VALUES (?,?,?,?,?,?)',
