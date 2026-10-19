@@ -1,5 +1,5 @@
 import type { Api } from '../lib/api';
-import type { LogsRepo, NodesRepo, SettingsRepo, SqlExec } from '../lib/db';
+import type { BooksRepo, LogsRepo, NodesRepo, SettingsRepo, SqlExec } from '../lib/db';
 
 export interface Deps {
   db: SqlExec;
@@ -7,6 +7,7 @@ export interface Deps {
   nodes: NodesRepo;
   logs: LogsRepo;
   settings: SettingsRepo;
+  books: BooksRepo;
 }
 
 let current: Deps | null = null;

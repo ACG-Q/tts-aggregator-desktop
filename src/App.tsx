@@ -4,6 +4,7 @@ import { Toaster } from '@/components/ui/sonner';
 import { cn } from '@/lib/utils';
 import { NAV_ITEMS, type NavItem } from '@/nav';
 import { usePlayerStore } from '@/store/playerStore';
+import { BooksPage } from './pages/BooksPage';
 import { LogsPage } from './pages/LogsPage';
 import { NodesPage } from './pages/NodesPage';
 import { ReadPage } from './pages/ReadPage';
@@ -18,6 +19,8 @@ function PlayingDot() {
 
 function NavRow({ item }: { item: NavItem }) {
   const playing = usePlayerStore((s) => s.status !== 'idle');
+  const source = usePlayerStore((s) => s.source);
+  const playerSource = source?.kind;
   const Icon = item.icon;
   return (
     <NavLink
@@ -34,7 +37,8 @@ function NavRow({ item }: { item: NavItem }) {
     >
       <Icon className="h-4 w-4" />
       <span>{item.label}</span>
-      {item.to === '/' && playing && <PlayingDot />}
+      {item.to === '/' && playing && playerSource !== 'book' && <PlayingDot />}
+      {item.to === '/books' && playing && playerSource === 'book' && <PlayingDot />}
     </NavLink>
   );
 }
@@ -60,6 +64,7 @@ export default function App() {
         <main className="flex-1 overflow-y-auto p-6">
           <Routes>
             <Route path="/" element={<ReadPage />} />
+            <Route path="/books" element={<BooksPage />} />
             <Route path="/nodes" element={<NodesPage />} />
             <Route path="/voices" element={<VoicesPage />} />
             <Route path="/logs" element={<LogsPage />} />

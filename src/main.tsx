@@ -4,7 +4,7 @@ import App from './App';
 import './index.css';
 import './styles.css';
 import { createApi } from './lib/api';
-import { createLogsRepo, createNodesRepo, createSettingsRepo, openDb } from './lib/db';
+import { createBooksRepo, createLogsRepo, createNodesRepo, createSettingsRepo, openDb } from './lib/db';
 import { setDeps } from './store/deps';
 import { setShareProvider } from './store/shareSync';
 import { useNodesStore } from './store/nodesStore';
@@ -22,6 +22,7 @@ async function bootstrap() {
     nodes: createNodesRepo(db),
     logs: createLogsRepo(db),
     settings: createSettingsRepo(db),
+    books: createBooksRepo(db),
   });
   await useSettingsStore.getState().load();
   await useNodesStore.getState().load();
