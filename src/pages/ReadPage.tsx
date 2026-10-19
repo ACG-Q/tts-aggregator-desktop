@@ -1,13 +1,11 @@
 import { useRef } from 'react';
-import { Pause, Play, SkipForward, Square, Upload } from 'lucide-react';
+import { Play, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
 import { Textarea } from '@/components/ui/textarea';
 import { PageHeader } from '@/components/PageHeader';
-import { RATE_OPTIONS } from '@/components/player/PlayerControls';
-import { fmtClock } from '@/lib/format';
 import { readTextFile } from '@/lib/encoding';
 import { voiceDisplayName } from '@/lib/voices';
 import { usePlayerStore } from '@/store/playerStore';
@@ -17,10 +15,9 @@ import { useVoicesStore } from '@/store/voicesStore';
 export function ReadPage() {
   const fileRef = useRef<HTMLInputElement>(null);
   const player = usePlayerStore();
-  const { synth, saveSynth, appPrefs, saveAppPrefs } = useSettingsStore();
+  const { synth, saveSynth } = useSettingsStore();
   const { voices, load } = useVoicesStore();
   const idle = player.status === 'idle';
-  const busy = player.status === 'running' || player.status === 'paused';
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
@@ -92,70 +89,8 @@ export function ReadPage() {
             <Slider value={[synth.pitch]} min={-100} max={100} step={1} className="w-24"
               onValueChange={([v]) => void saveSynth({ ...synth, pitch: v })} />
           </div>
-
-          <div className="ml-auto flex items-center gap-1.5">
-            {player.status === 'running' && (
-              <Button variant="outline" size="icon" onClick={player.pause} title="暂停">
-                <Pause className="h-4 w-4" />
-              </Button>
-            )}
-            {player.status === 'paused' && (
-              <Button size="icon" onClick={() => void player.resume()} title="继续">
-                <Play className="h-4 w-4" />
-              </Button>
-            )}
-            <Button variant="outline" size="icon" onClick={player.skipNext} disabled={idle} title="下一段">
-              <SkipForward className="h-4 w-4" />
-            </Button>
-            <Button variant="outline" size="icon" onClick={player.stop} disabled={idle} title="停止"
-              className="text-destructive hover:bg-destructive/10">
-              <Square className="h-4 w-4" />
-            </Button>
-          </div>
         </div>
       </div>
-
-      {/* 进度/音量/倍速 */}
-      {(busy || player.segs.length > 0) && (
-        <div className="flex flex-wrap items-center gap-4">
-          <div className="flex min-w-52 flex-1 items-center gap-3">
-            <span className="w-10 shrink-0 text-right text-xs tabular-nums text-muted-foreground">
-              {fmtClock(player.currentTime)}
-            </span>
-            <Slider
-              disabled={player.duration <= 0}
-              value={[Math.min(player.currentTime, player.duration || 0)]}
-              max={Math.max(player.duration, 1)}
-              step={0.5}
-              onValueChange={([v]) => player.seek(v)}
-              className="flex-1"
-            />
-            <span className="w-10 shrink-0 text-xs tabular-nums text-muted-foreground">
-              {fmtClock(player.duration)}
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Label className="shrink-0 text-xs text-muted-foreground">音量</Label>
-            <Slider value={[player.volume]} max={100} step={1} className="w-20"
-              onValueChange={([v]) => { player.setVolume(v); void saveAppPrefs({ ...appPrefs, volume: v }); }} />
-          </div>
-          <div className="flex items-center gap-2">
-            <Label className="shrink-0 text-xs text-muted-foreground">倍速</Label>
-            <Select value={String(player.playbackRate)}
-              onValueChange={(v) => { const r = Number(v); player.setPlaybackRate(r); void saveAppPrefs({ ...appPrefs, playbackRate: r }); }}>
-              <SelectTrigger className="w-20"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {RATE_OPTIONS.map((r) => (<SelectItem key={r} value={String(r)}>{r}x</SelectItem>))}
-              </SelectContent>
-            </Select>
-          </div>
-          {player.segs.length > 0 && (
-            <span className="text-xs tabular-nums text-muted-foreground">
-              段 {Math.min(player.index + 1, player.segs.length)}/{player.segs.length}
-            </span>
-          )}
-        </div>
-      )}
 
       {player.error && <p className="text-sm text-destructive">{player.error}</p>}
 
