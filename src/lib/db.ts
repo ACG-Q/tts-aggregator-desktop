@@ -1,8 +1,9 @@
 import Database from '@tauri-apps/plugin-sql';
 import {
-  API_VERSION_ORDINAL, HEALTH_ORDINAL, MODE_ORDINAL,
-  type ApiVersion, type CallLog, type CallMode, type Health, type TtsNode,
+  API_VERSION_ORDINAL, HEALTH_ORDINAL, MODE_ORDINAL, newId,
+  type ApiVersion, type Book, type BookChapter, type CallLog, type CallMode, type Health, type TtsNode,
 } from '../types/models';
+import type { TocEntry } from './toc';
 
 export interface SqlExec {
   execute(sql: string, params?: unknown[]): Promise<unknown>;
@@ -50,6 +51,23 @@ const SCHEMA = [
   )`,
   `CREATE INDEX IF NOT EXISTS idx_logs_time ON logs(time DESC)`,
   `CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)`,
+  `CREATE TABLE IF NOT EXISTS books (
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    imported_at INTEGER NOT NULL,
+    last_chapter INTEGER NOT NULL DEFAULT 0,
+    last_segment INTEGER NOT NULL DEFAULT 0,
+    playback_rate REAL NOT NULL DEFAULT 0
+  )`,
+  `CREATE TABLE IF NOT EXISTS chapters (
+    id TEXT PRIMARY KEY,
+    book_id TEXT NOT NULL,
+    idx INTEGER NOT NULL,
+    volume TEXT NOT NULL DEFAULT '',
+    title TEXT NOT NULL,
+    content TEXT NOT NULL DEFAULT ''
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_chapters_book ON chapters(book_id, idx)`,
 ];
 
 export async function openDb(): Promise<SqlExec> {
@@ -228,6 +246,103 @@ export function createSettingsRepo(db: SqlExec): SettingsRepo {
     },
     async setJson(key, value) {
       await this.set(key, JSON.stringify(value));
+    },
+  };
+}
+
+// ---------- 书架 ----------
+
+export interface BookRow {
+  id: string; title: string; imported_at: number;
+  last_chapter: number; last_segment: number; playback_rate: number;
+}
+
+export function rowToBook(r: BookRow): Book {
+  return {
+    id: r.id, title: r.title, importedAt: r.imported_at,
+    lastChapter: r.last_chapter, lastSegment: r.last_segment, playbackRate: r.playback_rate,
+  };
+}
+
+export function bookRow(b: Book): unknown[] {
+  return [b.id, b.title, b.importedAt, b.lastChapter, b.lastSegment, b.playbackRate];
+}
+
+export interface BookTocItem {
+  idx: number;
+  volume: string;
+  title: string;
+}
+
+export interface BooksRepo {
+  getAll(): Promise<Book[]>;
+  getToc(bookId: string): Promise<BookTocItem[]>;
+  getChapter(bookId: string, idx: number): Promise<BookChapter | null>;
+  hasChapter(bookId: string, idx: number): Promise<boolean>;
+  importBook(title: string, units: TocEntry[]): Promise<Book>;
+  delete(id: string): Promise<void>;
+  rename(id: string, title: string): Promise<void>;
+  setProgress(id: string, chapter: number, segment: number): Promise<void>;
+  setRate(id: string, rate: number): Promise<void>;
+}
+
+export function createBooksRepo(db: SqlExec): BooksRepo {
+  return {
+    async getAll() {
+      const rows = await db.select<BookRow>('SELECT * FROM books ORDER BY imported_at DESC');
+      return rows.map(rowToBook);
+    },
+    async getToc(bookId) {
+      return db.select<BookTocItem>(
+        'SELECT idx, volume, title FROM chapters WHERE book_id = ? ORDER BY idx ASC',
+        [bookId],
+      );
+    },
+    async getChapter(bookId, idx) {
+      const rows = await db.select<{
+        id: string; book_id: string; idx: number; volume: string; title: string; content: string;
+      }>('SELECT * FROM chapters WHERE book_id = ? AND idx = ?', [bookId, idx]);
+      if (!rows.length) return null;
+      const r = rows[0];
+      return { id: r.id, bookId: r.book_id, idx: r.idx, volume: r.volume, title: r.title, content: r.content };
+    },
+    async hasChapter(bookId, idx) {
+      const rows = await db.select<{ n: number }>(
+        'SELECT COUNT(*) AS n FROM chapters WHERE book_id = ? AND idx = ?',
+        [bookId, idx],
+      );
+      return (rows[0]?.n ?? 0) > 0;
+    },
+    async importBook(title, units) {
+      if (units.length === 0) throw new Error('未识别到任何内容');
+      const book: Book = {
+        id: newId(), title, importedAt: Date.now(),
+        lastChapter: 0, lastSegment: 0, playbackRate: 0,
+      };
+      await db.execute(
+        'INSERT INTO books (id, title, imported_at, last_chapter, last_segment, playback_rate) VALUES (?,?,?,?,?,?)',
+        bookRow(book),
+      );
+      for (let i = 0; i < units.length; i++) {
+        await db.execute(
+          'INSERT INTO chapters (id, book_id, idx, volume, title, content) VALUES (?,?,?,?,?,?)',
+          [newId(), book.id, i, units[i].volume, units[i].title, units[i].content],
+        );
+      }
+      return book;
+    },
+    async delete(id) {
+      await db.execute('DELETE FROM chapters WHERE book_id = ?', [id]);
+      await db.execute('DELETE FROM books WHERE id = ?', [id]);
+    },
+    async rename(id, title) {
+      await db.execute('UPDATE books SET title = ? WHERE id = ?', [title, id]);
+    },
+    async setProgress(id, chapter, segment) {
+      await db.execute('UPDATE books SET last_chapter = ?, last_segment = ? WHERE id = ?', [chapter, segment, id]);
+    },
+    async setRate(id, rate) {
+      await db.execute('UPDATE books SET playback_rate = ? WHERE id = ?', [rate, id]);
     },
   };
 }
