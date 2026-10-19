@@ -40,7 +40,32 @@ export interface PoolConfig {
   manualFailCount: number;
 }
 export interface ShareConfig { enabled: boolean; port: number; token: string; localhostOnly: boolean }
-export interface AppPrefs { probeConcurrency: number }
+export type ThemeMode = 'system' | 'light' | 'dark';
+
+export interface AppPrefs {
+  probeConcurrency: number;
+  theme: ThemeMode;
+  playbackRate: number;
+  volume: number;
+}
+
+export interface Book {
+  id: string;
+  title: string;
+  importedAt: number;
+  lastChapter: number;
+  lastSegment: number;
+  playbackRate: number;
+}
+
+export interface BookChapter {
+  id: string;
+  bookId: string;
+  idx: number;
+  volume: string;
+  title: string;
+  content: string;
+}
 
 export interface CallLog {
   id?: number;
@@ -66,7 +91,33 @@ export const MODE_ORDINAL: Record<CallMode, number> = { AUTO: 0, GROUP: 1, MANUA
 
 export const DEFAULT_POOL: PoolConfig = { mode: 'AUTO', groupIds: [], manualId: null, groupCursor: 0, manualFailCount: 0 };
 export const DEFAULT_SYNTH: SynthSettings = { rate: 0, pitch: 0, voice: '' };
-export const DEFAULT_APP_PREFS: AppPrefs = { probeConcurrency: 4 };
+export const DEFAULT_APP_PREFS: AppPrefs = {
+  probeConcurrency: 4,
+  theme: 'system',
+  playbackRate: 1,
+  volume: 100,
+};
+
+export function normalizeAppPrefs(raw: unknown): AppPrefs {
+  const o = (typeof raw === 'object' && raw !== null ? raw : {}) as Partial<AppPrefs>;
+  return {
+    probeConcurrency:
+      typeof o.probeConcurrency === 'number' && o.probeConcurrency >= 1 && o.probeConcurrency <= 8
+        ? o.probeConcurrency
+        : DEFAULT_APP_PREFS.probeConcurrency,
+    theme: o.theme === 'light' || o.theme === 'dark' || o.theme === 'system'
+      ? o.theme
+      : DEFAULT_APP_PREFS.theme,
+    playbackRate:
+      typeof o.playbackRate === 'number' && o.playbackRate >= 0.5 && o.playbackRate <= 2
+        ? o.playbackRate
+        : DEFAULT_APP_PREFS.playbackRate,
+    volume:
+      typeof o.volume === 'number' && o.volume >= 0 && o.volume <= 100
+        ? o.volume
+        : DEFAULT_APP_PREFS.volume,
+  };
+}
 
 export function newId(): string {
   const c = globalThis.crypto as Crypto | undefined;

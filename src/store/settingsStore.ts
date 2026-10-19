@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { invoke } from '@tauri-apps/api/core';
 import {
-  DEFAULT_APP_PREFS, DEFAULT_POOL, DEFAULT_SYNTH, defaultShare,
+  DEFAULT_APP_PREFS, DEFAULT_POOL, DEFAULT_SYNTH, defaultShare, normalizeAppPrefs,
   type AppPrefs, type PoolConfig, type ShareConfig, type SynthSettings,
 } from '../types/models';
 import { deps } from './deps';
@@ -32,7 +32,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       synth: await s.getJson('synth_settings', DEFAULT_SYNTH),
       pool: await s.getJson('pool_config', DEFAULT_POOL),
       share: await s.getJson('share_config', defaultShare()),
-      appPrefs: await s.getJson('app_prefs', DEFAULT_APP_PREFS),
+      appPrefs: normalizeAppPrefs(await s.getJson<Partial<AppPrefs>>('app_prefs', {})),
       loaded: true,
     });
   },

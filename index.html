@@ -1,10 +1,23 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Tauri + React + Typescript</title>
+    <title>TTS Aggregator</title>
+    <script>
+      (function () {
+        try {
+          var raw = localStorage.getItem('app_prefs');
+          var theme = raw ? (JSON.parse(raw).theme || 'system') : 'system';
+          var dark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+          document.documentElement.classList.toggle('dark', dark);
+          document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
+        } catch (e) {
+          /* 非 JSON 或首次启动：保持浅色 */
+        }
+      })();
+    </script>
   </head>
 
   <body>
