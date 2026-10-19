@@ -1,12 +1,19 @@
 import { useRef, useState } from 'react';
 import { fetch as tauriFetch } from '@tauri-apps/plugin-http';
-import { decodeTextBuffer } from '../lib/encoding';
-import { buildBaseUrl, dedupeByBaseUrl, rankRelevance, type HostRecord } from '../lib/importers/hosts';
-import { parseFofaCsv, parseFofaJson } from '../lib/importers/fofa-file';
-import { searchFofa, searchZoomeye } from '../lib/importers/search';
-import { parseZoomeyeJson } from '../lib/importers/zoomeye-file';
-import { deps } from '../store/deps';
-import { useNodesStore } from '../store/nodesStore';
+import { Check, Upload } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { decodeTextBuffer } from '@/lib/encoding';
+import { buildBaseUrl, dedupeByBaseUrl, rankRelevance, type HostRecord } from '@/lib/importers/hosts';
+import { parseFofaCsv, parseFofaJson } from '@/lib/importers/fofa-file';
+import { searchFofa, searchZoomeye } from '@/lib/importers/search';
+import { parseZoomeyeJson } from '@/lib/importers/zoomeye-file';
+import { deps } from '@/store/deps';
+import { useNodesStore } from '@/store/nodesStore';
 
 type Tab = 'fofa-file' | 'zoomeye-file' | 'fofa-api' | 'zoomeye-api';
 const TABS: [Tab, string][] = [
@@ -85,72 +92,80 @@ export function ImportPanel() {
   }
 
   return (
-    <div className="card">
-      <div className="tabs">
-        {TABS.map(([t, label]) => (
-          <button key={t} className={tab === t ? 'active' : ''} onClick={() => { setTab(t); setRecords(null); setErr(null); }}>
-            {label}
-          </button>
-        ))}
-      </div>
+    <Card>
+      <CardContent className="space-y-3 pt-6">
+        <Tabs value={tab} onValueChange={(v) => { setTab(v as Tab); setRecords(null); setErr(null); }}>
+          <TabsList>
+            {TABS.map(([t, label]) => (
+              <TabsTrigger key={t} value={t}>{label}</TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
 
-      {tab.endsWith('-file') && (
-        <div className="row">
-          <button className="btn" onClick={() => fileRef.current?.click()}>选择文件</button>
-          <span className="muted">支持 FOFA 导出的 CSV/JSON、ZoomEye 导出的 JSON</span>
-          <input ref={fileRef} type="file" accept=".csv,.json" style={{ display: 'none' }}
-            onChange={(e) => { const f = e.target.files?.[0]; if (f) void onFilePicked(f); e.target.value = ''; }} />
-        </div>
-      )}
+        {tab.endsWith('-file') && (
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()}>
+              <Upload className="mr-1 h-4 w-4" />
+              选择文件
+            </Button>
+            <span className="text-sm text-muted-foreground">支持 FOFA 导出的 CSV/JSON、ZoomEye 导出的 JSON</span>
+            <input ref={fileRef} type="file" accept=".csv,.json" className="hidden"
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) void onFilePicked(f); e.target.value = ''; }} />
+          </div>
+        )}
 
-      {tab === 'fofa-api' && (
-        <div className="row">
-          <input className="input" placeholder="email" value={fofa.email} onChange={(e) => setFofa({ ...fofa, email: e.target.value })} />
-          <input className="input" placeholder="api key" value={fofa.key} onChange={(e) => setFofa({ ...fofa, key: e.target.value })} />
-          <input className="input grow" placeholder="查询语法" value={fofa.query} onChange={(e) => setFofa({ ...fofa, query: e.target.value })} />
-          <button className="btn primary" disabled={busy} onClick={() => void runApiSearch()}>{busy ? '搜索中…' : '搜索'}</button>
-        </div>
-      )}
+        {tab === 'fofa-api' && (
+          <div className="flex gap-2">
+            <Input placeholder="email" aria-label="FOFA email" value={fofa.email} onChange={(e) => setFofa({ ...fofa, email: e.target.value })} />
+            <Input placeholder="api key" aria-label="FOFA api key" value={fofa.key} onChange={(e) => setFofa({ ...fofa, key: e.target.value })} />
+            <Input placeholder="查询语法" aria-label="FOFA 查询语法" className="grow" value={fofa.query} onChange={(e) => setFofa({ ...fofa, query: e.target.value })} />
+            <Button disabled={busy} onClick={() => void runApiSearch()}>{busy ? '搜索中…' : '搜索'}</Button>
+          </div>
+        )}
 
-      {tab === 'zoomeye-api' && (
-        <div className="row">
-          <input className="input" placeholder="API-KEY" value={ze.apiKey} onChange={(e) => setZe({ ...ze, apiKey: e.target.value })} />
-          <input className="input grow" placeholder="关键词" value={ze.query} onChange={(e) => setZe({ ...ze, query: e.target.value })} />
-          <button className="btn primary" disabled={busy} onClick={() => void runApiSearch()}>{busy ? '搜索中…' : '搜索'}</button>
-        </div>
-      )}
+        {tab === 'zoomeye-api' && (
+          <div className="flex gap-2">
+            <Input placeholder="API-KEY" aria-label="ZoomEye API-KEY" value={ze.apiKey} onChange={(e) => setZe({ ...ze, apiKey: e.target.value })} />
+            <Input placeholder="关键词" aria-label="ZoomEye 关键词" className="grow" value={ze.query} onChange={(e) => setZe({ ...ze, query: e.target.value })} />
+            <Button disabled={busy} onClick={() => void runApiSearch()}>{busy ? '搜索中…' : '搜索'}</Button>
+          </div>
+        )}
 
-      {err && <div className="muted" style={{ color: 'var(--danger)', marginTop: 8 }}>{err}</div>}
+        {err && <div className="text-sm text-destructive">{err}</div>}
 
-      {records && records.length > 0 && (
-        <div style={{ marginTop: 12 }}>
-          <div className="row between" style={{ marginBottom: 6 }}>
-            <span className="muted">命中 {records.length} 条，已勾选 {checked.size} 条（含 tts/speech/voice 关键词的默认勾选）</span>
-            <div className="row">
-              <button className="btn" onClick={() => setChecked(new Set(records.map((_, i) => i)))}>全选</button>
-              <button className="btn" onClick={() => setChecked(new Set())}>全不选</button>
-              <button className="btn primary" disabled={busy || checked.size === 0} onClick={() => void doImport()}>
-                {busy ? '导入中…' : `导入 ${checked.size} 条并探测`}
-              </button>
+        {records && records.length > 0 && (
+          <div>
+            <div className="mb-2 flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">
+                命中 {records.length} 条，已勾选 {checked.size} 条（含 tts/speech/voice 关键词的默认勾选）
+              </span>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={() => setChecked(new Set(records.map((_, i) => i)))}>全选</Button>
+                <Button variant="outline" size="sm" onClick={() => setChecked(new Set())}>全不选</Button>
+                <Button size="sm" disabled={busy || checked.size === 0} onClick={() => void doImport()}>
+                  <Check className="mr-1 h-4 w-4" />
+                  {busy ? '导入中…' : `导入 ${checked.size} 条并探测`}
+                </Button>
+              </div>
+            </div>
+            <div className="max-h-72 space-y-1 overflow-y-auto rounded-md border p-2">
+              {records.map((r, i) => (
+                <label key={i} className="flex cursor-pointer items-center gap-2 rounded px-2 py-1 text-sm hover:bg-accent">
+                  <Checkbox checked={checked.has(i)}
+                    onCheckedChange={() => {
+                      const next = new Set(checked);
+                      if (next.has(i)) next.delete(i); else next.add(i);
+                      setChecked(next);
+                    }} />
+                  <span className="font-mono text-muted-foreground">{r.ip}:{r.port}</span>
+                  <span className="grow truncate">{r.title || '—'}</span>
+                  {rankRelevance(r) > 0 && <Badge className="bg-success/15 text-success hover:bg-success/15">TTS 相关</Badge>}
+                </label>
+              ))}
             </div>
           </div>
-          <div className="seg-list">
-            {records.map((r, i) => (
-              <label key={i} className="seg row" style={{ gap: 8 }}>
-                <input type="checkbox" checked={checked.has(i)}
-                  onChange={() => {
-                    const next = new Set(checked);
-                    if (next.has(i)) next.delete(i); else next.add(i);
-                    setChecked(next);
-                  }} />
-                <span className="mono">{r.ip}:{r.port}</span>
-                <span className="grow">{r.title || '—'}</span>
-                {rankRelevance(r) > 0 && <span className="badge ok">TTS 相关</span>}
-              </label>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

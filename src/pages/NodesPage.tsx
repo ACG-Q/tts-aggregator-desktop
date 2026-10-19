@@ -1,7 +1,20 @@
 import { useEffect, useState } from 'react';
-import { useNodesStore } from '../store/nodesStore';
-import { useSettingsStore } from '../store/settingsStore';
-import { isCoolingDown, type CallMode, type TtsNode } from '../types/models';
+import { Plus, RefreshCw, Search } from 'lucide-react';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { useNodesStore } from '@/store/nodesStore';
+import { useSettingsStore } from '@/store/settingsStore';
+import { isCoolingDown, type CallMode, type TtsNode } from '@/types/models';
 import { ImportPanel } from './ImportPanel';
 
 const MODES: [CallMode, string, string][] = [
@@ -11,11 +24,11 @@ const MODES: [CallMode, string, string][] = [
 ];
 
 function healthBadge(n: TtsNode) {
-  if (n.disabled) return <span className="badge unknown">已禁用</span>;
-  if (isCoolingDown(n, Date.now())) return <span className="badge warn">冷却中</span>;
-  if (n.health === 'OK') return <span className="badge ok">正常</span>;
-  if (n.health === 'FAIL') return <span className="badge fail">失败</span>;
-  return <span className="badge unknown">未测</span>;
+  if (n.disabled) return <Badge className="bg-muted text-muted-foreground hover:bg-muted">已禁用</Badge>;
+  if (isCoolingDown(n, Date.now())) return <Badge className="bg-warning/20 text-warning hover:bg-warning/20">冷却中</Badge>;
+  if (n.health === 'OK') return <Badge className="bg-success/15 text-success hover:bg-success/15">正常</Badge>;
+  if (n.health === 'FAIL') return <Badge variant="destructive">失败</Badge>;
+  return <Badge variant="secondary">未测</Badge>;
 }
 
 const emptyForm = { baseUrl: '', label: '', apiKey: '' };
@@ -24,27 +37,33 @@ export function NodesPage() {
   const st = useNodesStore();
   const { pool, updatePool, appPrefs, saveAppPrefs } = useSettingsStore();
   const [showForm, setShowForm] = useState<null | 'add' | 'edit'>(null);
-  const [editOrig, setEditOrig] = useState<string>('');
+  const [editOrig, setEditOrig] = useState('');
   const [form, setForm] = useState(emptyForm);
   const [err, setErr] = useState<string | null>(null);
+  const [q, setQ] = useState('');
+  const [deleteFor, setDeleteFor] = useState<TtsNode | null>(null);
 
   useEffect(() => { void st.load(); }, []);
 
-  function openAdd() {
+  const shown = st.nodes.filter(
+    (n) => !q || n.label.includes(q) || n.baseUrl.toLowerCase().includes(q.toLowerCase()),
+  );
+
+  function openAdd(): void {
     setForm(emptyForm);
     setEditOrig('');
     setErr(null);
     setShowForm('add');
   }
 
-  function openEdit(n: TtsNode) {
+  function openEdit(n: TtsNode): void {
     setForm({ baseUrl: n.baseUrl, label: n.label, apiKey: n.apiKey ?? '' });
     setEditOrig(n.baseUrl);
     setErr(null);
     setShowForm('edit');
   }
 
-  async function submit() {
+  async function submit(): Promise<void> {
     if (!form.baseUrl.trim()) { setErr('URL 不能为空'); return; }
     setErr(null);
     try {
@@ -65,125 +84,167 @@ export function NodesPage() {
   }
 
   return (
-    <div>
-      <div className="page-title">节点</div>
+    <div className="space-y-4">
+      <h1 className="text-xl font-semibold">节点</h1>
 
-      <div className="card">
-        <div className="row between">
-          <div className="row">
-            <button className="btn primary" onClick={openAdd}>添加节点</button>
-            <button className="btn" onClick={() => void st.probeAll()} disabled={st.probing}>
-              {st.probing ? (st.probeProgress ?? '探测中…') : '全部探测'}
-            </button>
-            <span className="muted">共 {st.nodes.length} 个</span>
-          </div>
-          <div className="row">
-            <label className="muted">探测并发</label>
-            <input
-              className="input" style={{ width: 64 }} type="number" min={1} max={8}
+      <Card>
+        <CardContent className="flex flex-wrap items-center gap-2 pt-6">
+          <Button onClick={openAdd}>
+            <Plus className="mr-1 h-4 w-4" />
+            添加节点
+          </Button>
+          <Button variant="outline" onClick={() => void st.probeAll()} disabled={st.probing}>
+            <RefreshCw className="mr-1 h-4 w-4" />
+            {st.probing ? (st.probeProgress ?? '探测中…') : '全部探测'}
+          </Button>
+          <span className="text-sm text-muted-foreground">共 {st.nodes.length} 个</span>
+          <div className="ml-auto flex items-center gap-2">
+            <Search className="h-4 w-4 text-muted-foreground" />
+            <Input placeholder="搜索备注 / URL" value={q} onChange={(e) => setQ(e.target.value)} className="w-56" />
+            <Label className="text-xs text-muted-foreground">探测并发</Label>
+            <Input
+              type="number" min={1} max={8} className="w-16"
               value={appPrefs.probeConcurrency}
-              onChange={(e) => void saveAppPrefs({ ...appPrefs, probeConcurrency: Math.max(1, Math.min(8, Number(e.target.value) || 1)) })}
+              onChange={(e) => void saveAppPrefs({
+                ...appPrefs,
+                probeConcurrency: Math.max(1, Math.min(8, Number(e.target.value) || 1)),
+              })}
             />
           </div>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
       <ImportPanel />
 
-      <div className="card">
-        <div className="row" style={{ marginBottom: 8 }}>
-          {MODES.map(([mode, label, desc]) => (
-            <button
-              key={mode}
-              className={`btn ${pool.mode === mode ? 'primary' : ''}`}
-              title={desc}
-              onClick={() => void updatePool((c) => ({ ...c, mode }))}
-            >
-              {label}
-            </button>
-          ))}
-          <span className="muted">{MODES.find(([m]) => m === pool.mode)?.[2]}</span>
-        </div>
-
-        <table className="table">
-          <thead>
-            <tr>
-              <th>状态</th><th>节点</th><th>API</th><th>音色</th><th>组</th><th>手选</th><th>来源</th><th style={{ width: 220 }}>操作</th>
-            </tr>
-          </thead>
-          <tbody>
-            {st.nodes.map((n) => (
-              <tr key={n.id}>
-                <td>{healthBadge(n)}</td>
-                <td>
-                  <div style={{ fontWeight: 600 }}>{n.label || '—'}</div>
-                  <div className="muted mono">{n.baseUrl}</div>
-                </td>
-                <td><span className="badge accent">{n.apiVersion}</span>{n.keyless && <> <span className="badge ok">免Key</span></>}</td>
-                <td>{n.voiceCount || '—'}</td>
-                <td>
-                  <input
-                    type="checkbox"
-                    checked={pool.groupIds.includes(n.id)}
-                    onChange={() => void updatePool((c) => ({
-                      ...c,
-                      groupIds: c.groupIds.includes(n.id)
-                        ? c.groupIds.filter((x) => x !== n.id)
-                        : [...c.groupIds, n.id],
-                    }))}
-                  />
-                </td>
-                <td>
-                  <input
-                    type="radio" name="manual" checked={pool.manualId === n.id}
-                    onChange={() => void updatePool((c) => ({ ...c, manualId: n.id, manualFailCount: 0 }))}
-                  />
-                </td>
-                <td className="muted">{n.source}</td>
-                <td>
-                  <div className="row" style={{ gap: 6, flexWrap: 'nowrap' }}>
-                    <button className="btn" onClick={() => void st.reprobe(n)}>测试</button>
-                    <button className="btn" onClick={() => openEdit(n)}>编辑</button>
-                    <button className="btn" onClick={() => void st.setDisabled([n.id], !n.disabled)}>
-                      {n.disabled ? '启用' : '禁用'}
-                    </button>
-                    <button className="btn danger" onClick={() => { if (confirm(`删除 ${n.baseUrl}？`)) void st.remove([n.id]); }}>删</button>
-                  </div>
-                </td>
-              </tr>
+      <Card>
+        <CardContent className="pt-6">
+          <div className="mb-3 flex flex-wrap items-center gap-2">
+            {MODES.map(([mode, label, desc]) => (
+              <Button
+                key={mode}
+                variant={pool.mode === mode ? 'default' : 'outline'}
+                size="sm"
+                title={desc}
+                onClick={() => void updatePool((c) => ({ ...c, mode }))}
+              >
+                {label}
+              </Button>
             ))}
-            {st.nodes.length === 0 && (
-              <tr><td colSpan={8} className="muted" style={{ textAlign: 'center', padding: 24 }}>还没有节点，点击“添加节点”</td></tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+            <span className="text-sm text-muted-foreground">{MODES.find(([m]) => m === pool.mode)?.[2]}</span>
+          </div>
 
-      {showForm && (
-        <div className="dialog-mask" onClick={() => setShowForm(null)}>
-          <div className="dialog" onClick={(e) => e.stopPropagation()}>
-            <h3>{showForm === 'add' ? '添加节点' : '编辑节点'}</h3>
-            <div className="field">
-              <label>节点 URL</label>
-              <input className="input" placeholder="https://tts.example.com" value={form.baseUrl}
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>状态</TableHead>
+                <TableHead>节点</TableHead>
+                <TableHead>API</TableHead>
+                <TableHead>音色</TableHead>
+                <TableHead>组</TableHead>
+                <TableHead>手选</TableHead>
+                <TableHead>来源</TableHead>
+                <TableHead className="w-64">操作</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {shown.map((n) => (
+                <TableRow key={n.id}>
+                  <TableCell>{healthBadge(n)}</TableCell>
+                  <TableCell>
+                    <div className="font-medium">{n.label || '—'}</div>
+                    <div className="font-mono text-xs text-muted-foreground">{n.baseUrl}</div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex gap-1">
+                      <Badge variant="outline">{n.apiVersion}</Badge>
+                      {n.keyless && <Badge className="bg-success/15 text-success hover:bg-success/15">免Key</Badge>}
+                    </div>
+                  </TableCell>
+                  <TableCell>{n.voiceCount || '—'}</TableCell>
+                  <TableCell>
+                    <Checkbox
+                      checked={pool.groupIds.includes(n.id)}
+                      onCheckedChange={() => void updatePool((c) => ({
+                        ...c,
+                        groupIds: c.groupIds.includes(n.id)
+                          ? c.groupIds.filter((x) => x !== n.id)
+                          : [...c.groupIds, n.id],
+                      }))}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Checkbox
+                      checked={pool.manualId === n.id}
+                      onCheckedChange={() => void updatePool((c) => ({ ...c, manualId: n.id, manualFailCount: 0 }))}
+                    />
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">{n.source}</TableCell>
+                  <TableCell>
+                    <div className="flex flex-nowrap gap-1">
+                      <Button variant="outline" size="sm" onClick={() => void st.reprobe(n)}>测试</Button>
+                      <Button variant="outline" size="sm" onClick={() => openEdit(n)}>编辑</Button>
+                      <Button variant="outline" size="sm" onClick={() => void st.setDisabled([n.id], !n.disabled)}>
+                        {n.disabled ? '启用' : '禁用'}
+                      </Button>
+                      <Button variant="outline" size="sm" className="text-destructive" onClick={() => setDeleteFor(n)}>删</Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+              {shown.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={8} className="py-10 text-center text-muted-foreground">
+                    {st.nodes.length ? '没有匹配的节点' : '还没有节点，点击“添加节点”'}
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      <Dialog open={!!showForm} onOpenChange={(o) => { if (!o) setShowForm(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{showForm === 'add' ? '添加节点' : '编辑节点'}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label>节点 URL</Label>
+              <Input placeholder="https://tts.example.com" value={form.baseUrl}
                 onChange={(e) => setForm({ ...form, baseUrl: e.target.value })} />
             </div>
-            <div className="field">
-              <label>备注名</label>
-              <input className="input" value={form.label} onChange={(e) => setForm({ ...form, label: e.target.value })} />
+            <div className="space-y-1.5">
+              <Label>备注名</Label>
+              <Input value={form.label} onChange={(e) => setForm({ ...form, label: e.target.value })} />
             </div>
-            <div className="field">
-              <label>API Key（免 Key 节点留空）</label>
-              <input className="input" value={form.apiKey} onChange={(e) => setForm({ ...form, apiKey: e.target.value })} />
+            <div className="space-y-1.5">
+              <Label>API Key（免 Key 节点留空）</Label>
+              <Input type="password" value={form.apiKey} onChange={(e) => setForm({ ...form, apiKey: e.target.value })} />
             </div>
-            {err && <div className="muted" style={{ color: 'var(--danger)', marginBottom: 8 }}>{err}</div>}
-            <div className="row" style={{ justifyContent: 'flex-end' }}>
-              <button className="btn" onClick={() => setShowForm(null)}>取消</button>
-              <button className="btn primary" onClick={() => void submit()}>保存并探测</button>
-            </div>
+            {err && <div className="text-sm text-destructive">{err}</div>}
           </div>
-        </div>
-      )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowForm(null)}>取消</Button>
+            <Button onClick={() => void submit()}>保存并探测</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={!!deleteFor} onOpenChange={(o) => { if (!o) setDeleteFor(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>删除 {deleteFor?.baseUrl}？</AlertDialogTitle>
+            <AlertDialogDescription>节点及其探测状态将被删除，可通过重新导入恢复。</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { if (deleteFor) void st.remove([deleteFor.id]); }}>
+              删除
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
