@@ -11,7 +11,7 @@ export interface SqlExec {
 }
 
 export const LOG_KEEP = 500;
-export const LOG_QUERY_LIMIT = 300;
+export const LOG_QUERY_LIMIT = 500;
 
 const SCHEMA = [
   `CREATE TABLE IF NOT EXISTS nodes (
