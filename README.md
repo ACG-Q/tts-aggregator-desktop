@@ -18,13 +18,14 @@ npm run tauri build   # 产出安装包
 
 ## 功能列表
 
-- **朗读**：文本框输入或导入本地 TXT（UTF-8，失败回退 gb18030）；长文本按段落/句号切分，逐段合成排队播放，支持暂停/继续/下一段/停止，预合成下一段流水线
+- **朗读**：文本框输入或导入本地 TXT（UTF-8，失败回退 gb18030）；长文本按段落/句号切分，逐段合成排队播放，支持暂停/继续/下一段/停止，预合成下一段流水线，支持音量/倍速即时调节与系统媒体键控制
 - **节点**：增删改、单个/全部探测（并发可配 1-8）、健康度/冷却/连败熔断、API Key、免 Key 节点识别、两代 API 版本自动探测
 - **调度**：AUTO（按健康度依次尝试）、GROUP（组内轮询）、MANUAL（手选节点，连败 3 次熔断），失败自动切换并记日志
 - **音色**：拉取 `/voices`，中文显示名映射、性别/语言过滤、搜索、试听、设为默认
 - **日志**：调用记录（成功/失败/切换/触发冷却）、按结果过滤、一键清空
 - **导入**：FOFA（CSV/JSON 文件 + API 在线搜索）、ZoomEye（JSON 文件 + API 在线搜索），TTS 关键词相关性排序、逐条勾选入库、来源溯源
 - **局域网分享**：内嵌只读 HTTP 服务 `GET /nodes.json`，token 校验（query 或 X-Token 头）、可选仅本机监听，供同网段设备拉取节点配置
+- **书架（小说听书）**：导入本地 TXT，内置多级目录解析（第X卷/篇/部 + 第X章/回/节/集 + 「1、」「1.」编号行；中文/阿拉伯/罗马数字），按卷分组章节树点播、断点续听（书/章/段三级进度）、章末自动连播、全书播完提示、书级倍速覆盖
 
 ## 与安卓版差异
 
@@ -34,6 +35,7 @@ npm run tauri build   # 产出安装包
 | 分享方式 | 局域网 URL + token，无二维码 |
 | 系统 TTS | 不支持（桌面程序无法注册为系统朗读引擎），朗读仅在应用内 |
 | 播放实现 | HTML5 Audio + blob URL（节点返回 MP3 直接可播），无 PCM 解码 |
+| UI 技术栈 | Tailwind CSS v4 + shadcn/ui（明/暗双主题，跟随系统） |
 
 ## 测试
 
@@ -53,10 +55,13 @@ src/
     split.ts        长文本切分器
     encoding.ts     TXT 编码嗅探（UTF-8 → gb18030）
     voices.ts       音色显示名映射
-    db.ts           SQLite 仓库层（nodes/logs/settings）
+    db.ts           SQLite 仓库层（nodes/logs/settings/books/chapters）
+    toc.ts          书籍目录解析
+    format.ts       时间/进度格式化
+    audition.ts     试听互斥播放
     importers/      FOFA/ZoomEye 文件解析 + API 搜索
-  store/        # zustand 状态（nodes/voices/logs/player/settings）
-  pages/        # 五个页面 + 导入面板
+  store/        # zustand 状态（nodes/voices/logs/player/settings/bookPlay）
+  pages/        # 六个页面 + 导入面板（书架/朗读/节点/音色/日志/设置）
   types/        # 数据模型（与安卓同构，snake_case 枚举序号）
 src-tauri/
   src/lib.rs   # SQLite/HTTP 插件 + 局域网分享 HTTP 服务

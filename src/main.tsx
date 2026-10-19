@@ -2,7 +2,6 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import './index.css';
-import './styles.css';
 import { createApi } from './lib/api';
 import { createBooksRepo, createLogsRepo, createNodesRepo, createSettingsRepo, openDb } from './lib/db';
 import { setDeps } from './store/deps';
