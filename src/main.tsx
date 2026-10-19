@@ -12,6 +12,7 @@ import { useSettingsStore } from './store/settingsStore';
 import { useVoicesStore } from './store/voicesStore';
 import { synthesizeText } from './store/poolDeps';
 import { usePlayerStore } from './store/playerStore';
+import { bindMediaSession } from './lib/mediaSession';
 
 async function bootstrap() {
   const db = await openDb();
@@ -25,6 +26,9 @@ async function bootstrap() {
   await useSettingsStore.getState().load();
   await useNodesStore.getState().load();
   await useVoicesStore.getState().initCache();
+  const bootPrefs = useSettingsStore.getState().appPrefs;
+  usePlayerStore.getState().initPlayback(bootPrefs.volume, bootPrefs.playbackRate);
+  bindMediaSession(usePlayerStore);
   setShareProvider(() => ({
     nodes: useNodesStore.getState().nodes,
     pool: useSettingsStore.getState().pool,
