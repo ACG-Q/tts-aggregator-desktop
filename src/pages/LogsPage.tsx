@@ -1,16 +1,16 @@
 import { useEffect, useState } from 'react';
-import { RefreshCw, Trash2 } from 'lucide-react';
+import { AlertTriangle, RefreshCw, Trash2 } from 'lucide-react';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { cn } from '@/lib/utils';
+import { PageHeader } from '@/components/PageHeader';
 import { Pagination } from '@/components/Pagination';
-import { fmtTimeFull } from '@/lib/format';
+import { fmtLogTime, fmtTimeFull } from '@/lib/format';
 import { useLogsStore } from '@/store/logsStore';
 import type { LogFilter } from '@/types/models';
 
@@ -30,78 +30,93 @@ export function LogsPage() {
   const pageItems = logs.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
   return (
-    <div className="space-y-4">
-      <h1 className="text-xl font-semibold">调用日志</h1>
-
-      <Card>
-        <CardContent className="flex items-center justify-between pt-6">
-          <Tabs value={filter} onValueChange={(v) => { setPage(0); void load(v as LogFilter); }}>
-            <TabsList>
-              {FILTERS.map(([f, label]) => (
-                <TabsTrigger key={f} value={f}>{label}</TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
-              <RefreshCw className="mr-1 h-4 w-4" />
+    <div className="space-y-6">
+      <PageHeader
+        title="调用日志"
+        description="合成调用的成功 / 失败 / 切换记录。"
+        actions={
+          <>
+            <Button variant="outline" onClick={() => void load()} disabled={loading}>
+              <RefreshCw className={cn('mr-1.5 h-4 w-4', loading && 'animate-spin')} />
               {loading ? '刷新中…' : '刷新'}
             </Button>
-            <Button variant="outline" size="sm" className="text-destructive" onClick={() => setConfirmClear(true)}>
-              <Trash2 className="mr-1 h-4 w-4" />
+            <Button variant="outline" className="text-destructive hover:bg-destructive/10"
+              onClick={() => setConfirmClear(true)}>
+              <Trash2 className="mr-1.5 h-4 w-4" />
               清空
             </Button>
-          </div>
-        </CardContent>
-      </Card>
+          </>
+        }
+      />
 
-      <Card>
-        <CardContent className="pt-6">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>时间</TableHead>
-                <TableHead>结果</TableHead>
-                <TableHead>节点</TableHead>
-                <TableHead>模式</TableHead>
-                <TableHead>尝试</TableHead>
-                <TableHead>耗时</TableHead>
-                <TableHead>长度</TableHead>
-                <TableHead>内容预览</TableHead>
+      {/* 过滤分段控件 */}
+      <div className="flex w-fit gap-1 rounded-lg bg-muted p-1">
+        {FILTERS.map(([f, label]) => (
+          <button
+            key={f}
+            onClick={() => { setPage(0); void load(f); }}
+            className={cn(
+              'rounded-md px-4 py-1.5 text-sm transition-colors',
+              filter === f
+                ? 'bg-card font-medium text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground',
+            )}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* 日志表：关键列 */}
+      <div className="overflow-hidden rounded-xl border border-border bg-card">
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-muted/50 hover:bg-muted/50">
+              <TableHead className="pl-5">时间</TableHead>
+              <TableHead>结果</TableHead>
+              <TableHead>节点</TableHead>
+              <TableHead>耗时</TableHead>
+              <TableHead className="pr-5">内容</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {pageItems.map((l) => (
+              <TableRow key={l.id}>
+                <TableCell className="whitespace-nowrap pl-5 tabular-nums text-muted-foreground"
+                  title={fmtTimeFull(l.time)}>
+                  {fmtLogTime(l.time)}
+                </TableCell>
+                <TableCell>
+                  <div className="flex gap-1">
+                    {l.success
+                      ? <Badge className="bg-success/15 text-success hover:bg-success/15">成功</Badge>
+                      : <Badge variant="destructive">失败</Badge>}
+                    {l.triggeredCooldown && <Badge className="bg-warning/20 text-warning hover:bg-warning/20">冷却</Badge>}
+                  </div>
+                </TableCell>
+                <TableCell className="max-w-40 truncate font-mono text-xs text-muted-foreground">{l.nodeUrl}</TableCell>
+                <TableCell className="tabular-nums">{l.latencyMs}ms</TableCell>
+                <TableCell className="max-w-xs truncate pr-5 text-muted-foreground"
+                  title={l.error ?? l.textPreview}>
+                  {l.error && (
+                    <AlertTriangle className="mr-1 inline h-3.5 w-3.5 -translate-y-px text-destructive" />
+                  )}
+                  {l.error ? `${l.error} · ` : ''}
+                  {l.textPreview}
+                  {l.fromNode && <span className="text-muted-foreground">（从 {l.fromNode} 切换）</span>}
+                </TableCell>
               </TableRow>
-            </TableHeader>
-            <TableBody>
-              {pageItems.map((l) => (
-                <TableRow key={l.id}>
-                  <TableCell className="whitespace-nowrap text-muted-foreground">{fmtTimeFull(l.time)}</TableCell>
-                  <TableCell>
-                    <div className="flex gap-1">
-                      {l.success
-                        ? <Badge className="bg-success/15 text-success hover:bg-success/15">成功</Badge>
-                        : <Badge variant="destructive">失败</Badge>}
-                      {l.triggeredCooldown && <Badge className="bg-warning/20 text-warning hover:bg-warning/20">触发冷却</Badge>}
-                    </div>
-                  </TableCell>
-                  <TableCell className="font-mono text-muted-foreground">{l.nodeUrl}</TableCell>
-                  <TableCell>{l.mode}</TableCell>
-                  <TableCell>{l.attempt}</TableCell>
-                  <TableCell>{l.latencyMs}ms</TableCell>
-                  <TableCell>{l.textLen}</TableCell>
-                  <TableCell title={l.error ?? undefined} className="max-w-md truncate text-muted-foreground">
-                    {l.error ? `⚠ ${l.error} · ` : ''}{l.textPreview}{l.fromNode ? `（从 ${l.fromNode} 切换）` : ''}
-                  </TableCell>
-                </TableRow>
-              ))}
-              {logs.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={8} className="py-10 text-center text-muted-foreground">暂无日志</TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-          <Pagination page={page} pageSize={PAGE_SIZE} total={logs.length} onPage={setPage} />
-        </CardContent>
-      </Card>
+            ))}
+            {logs.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={5} className="py-12 text-center text-muted-foreground">暂无日志</TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
+
+      <Pagination page={page} pageSize={PAGE_SIZE} total={logs.length} onPage={setPage} />
 
       <AlertDialog open={confirmClear} onOpenChange={setConfirmClear}>
         <AlertDialogContent>

@@ -61,7 +61,7 @@ export default function App() {
             节点池 · SQLite 本地库
           </div>
         </aside>
-        <main className="flex-1 overflow-y-auto p-6">
+        <main className="flex-1 overflow-y-auto px-8 py-8">
           <Routes>
             <Route path="/" element={<ReadPage />} />
             <Route path="/books" element={<BooksPage />} />

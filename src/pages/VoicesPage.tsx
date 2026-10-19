@@ -1,19 +1,63 @@
 import { useEffect, useMemo, useState } from 'react';
-import { RefreshCw, Search } from 'lucide-react';
+import { Pause, Play, RefreshCw, Search, Volume2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { cn } from '@/lib/utils';
+import { PageHeader } from '@/components/PageHeader';
 import { Pagination } from '@/components/Pagination';
 import { playAudition, stopAudition } from '@/lib/audition';
 import { voiceDisplayName } from '@/lib/voices';
 import { synthesizeText } from '@/store/poolDeps';
 import { useSettingsStore } from '@/store/settingsStore';
 import { useVoicesStore } from '@/store/voicesStore';
+import type { Voice } from '@/types/models';
 
 const PAGE_SIZE = 50;
+
+const genderLabel = (g: string) => (g === 'Female' ? '女' : g === 'Male' ? '男' : g);
+
+function VoiceCard({ v, isDefault, auditioning, onAudition, onSetDefault }: {
+  v: Voice;
+  isDefault: boolean;
+  auditioning: boolean;
+  onAudition: () => void;
+  onSetDefault: () => void;
+}) {
+  const playing = auditioning;
+  return (
+    <div className="rounded-xl border border-border bg-card p-4">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <div className="truncate font-medium">{voiceDisplayName(v)}</div>
+          <div className="mt-0.5 truncate font-mono text-xs text-muted-foreground">{v.id}</div>
+        </div>
+        {isDefault && (
+          <Badge className="shrink-0 bg-success/15 text-success hover:bg-success/15">默认</Badge>
+        )}
+      </div>
+      <div className="mt-1.5 flex flex-wrap gap-1.5 text-xs text-muted-foreground">
+        {v.gender && <span>{genderLabel(v.gender)}</span>}
+        {v.locale && <span>· {v.locale}</span>}
+        {v.styles && v.styles.length > 0 && <span>· {v.styles.join('/')}</span>}
+      </div>
+      <div className="mt-3 flex gap-2">
+        <Button variant="outline" size="sm" onClick={onAudition}
+          className={cn(playing && 'border-primary text-primary')}>
+          {playing
+            ? <><Pause className="mr-1 h-3.5 w-3.5" />停止试听</>
+            : <><Play className="mr-1 h-3.5 w-3.5" />试听</>}
+        </Button>
+        <Button variant="outline" size="sm" disabled={isDefault} onClick={onSetDefault}>
+          <Volume2 className="mr-1 h-3.5 w-3.5" />
+          {isDefault ? '当前默认' : '设为默认'}
+        </Button>
+      </div>
+    </div>
+  );
+}
 
 export function VoicesPage() {
   const { voices, loading, error, load } = useVoicesStore();
@@ -52,87 +96,66 @@ export function VoicesPage() {
   }
 
   return (
-    <div className="space-y-4">
-      <h1 className="text-xl font-semibold">音色</h1>
-
-      <Card>
-        <CardContent className="flex flex-wrap items-center gap-2 pt-6">
+    <div className="space-y-6">
+      <PageHeader
+        title="音色"
+        description="浏览、试听并设置默认音色。"
+        actions={
           <Button variant="outline" onClick={() => void load(true)} disabled={loading}>
-            <RefreshCw className="mr-1 h-4 w-4" />
+            <RefreshCw className={cn('mr-1.5 h-4 w-4', loading && 'animate-spin')} />
             {loading ? '拉取中…' : '重新拉取'}
           </Button>
-          <div className="relative">
-            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="搜索音色名 / ID" className="w-64 pl-8" value={q}
-              onChange={(e) => { setQ(e.target.value); setPage(0); }} />
-          </div>
-          <Select value={gender || 'all-gender'} onValueChange={(v) => { setGender(v === 'all-gender' ? '' : v); setPage(0); }}>
-            <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all-gender">全部性别</SelectItem>
-              <SelectItem value="Female">女</SelectItem>
-              <SelectItem value="Male">男</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={locale || 'all-locale'} onValueChange={(v) => { setLocale(v === 'all-locale' ? '' : v); setPage(0); }}>
-            <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all-locale">全部语言</SelectItem>
-              {locales.map((l) => <SelectItem key={l} value={l}>{l}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <span className="ml-auto text-sm text-muted-foreground">{shown.length} 个</span>
-        </CardContent>
-        {error && <CardContent className="pt-0 text-sm text-destructive">{error}</CardContent>}
-      </Card>
+        }
+      />
 
-      <Card>
-        <CardContent className="pt-6">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>名称</TableHead>
-                <TableHead>ID</TableHead>
-                <TableHead>性别</TableHead>
-                <TableHead>语言</TableHead>
-                <TableHead>风格</TableHead>
-                <TableHead className="w-40">操作</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {pageItems.map((v) => (
-                <TableRow key={v.id}>
-                  <TableCell className="font-medium">{voiceDisplayName(v)}</TableCell>
-                  <TableCell className="font-mono text-muted-foreground">{v.id}</TableCell>
-                  <TableCell>{v.gender === 'Female' ? '女' : v.gender === 'Male' ? '男' : v.gender || '—'}</TableCell>
-                  <TableCell>{v.locale || '—'}</TableCell>
-                  <TableCell className="text-muted-foreground">{v.styles?.length ? v.styles.join(' / ') : '—'}</TableCell>
-                  <TableCell>
-                    <div className="flex gap-1">
-                      <Button variant="outline" size="sm" disabled={auditioning !== null && auditioning !== v.id}
-                        onClick={() => void audition(v.id)}>
-                        {auditioning === v.id ? '停止试听' : '试听'}
-                      </Button>
-                      <Button variant="outline" size="sm" disabled={synth.voice === v.id}
-                        onClick={() => void saveSynth({ ...synth, voice: v.id })}>
-                        {synth.voice === v.id ? '当前默认' : '设为默认'}
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-              {pageItems.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={6} className="py-10 text-center text-muted-foreground">
-                    {voices.length ? '没有匹配的音色' : '还没有音色，请先添加节点并探测'}
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-          <Pagination page={page} pageSize={PAGE_SIZE} total={shown.length} onPage={setPage} />
-        </CardContent>
-      </Card>
+      {/* 过滤条 */}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input placeholder="搜索音色名 / ID" className="w-64 pl-9" value={q}
+            onChange={(e) => { setQ(e.target.value); setPage(0); }} />
+        </div>
+        <Select value={gender || 'all-gender'} onValueChange={(v) => { setGender(v === 'all-gender' ? '' : v); setPage(0); }}>
+          <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all-gender">全部性别</SelectItem>
+            <SelectItem value="Female">女</SelectItem>
+            <SelectItem value="Male">男</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={locale || 'all-locale'} onValueChange={(v) => { setLocale(v === 'all-locale' ? '' : v); setPage(0); }}>
+          <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all-locale">全部语言</SelectItem>
+            {locales.map((l) => <SelectItem key={l} value={l}>{l}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <span className="ml-auto text-sm text-muted-foreground">共 {shown.length} 个</span>
+      </div>
+
+      {error && <p className="text-sm text-destructive">{error}</p>}
+
+      {/* 卡片网格 */}
+      {pageItems.length > 0 ? (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {pageItems.map((v) => (
+            <VoiceCard
+              key={v.id}
+              v={v}
+              isDefault={synth.voice === v.id}
+              auditioning={auditioning === v.id}
+              onAudition={() => void audition(v.id)}
+              onSetDefault={() => void saveSynth({ ...synth, voice: v.id })}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="rounded-xl border border-border bg-card py-16 text-center text-muted-foreground">
+          {voices.length ? '没有匹配的音色' : '还没有音色，请先添加节点并探测'}
+        </div>
+      )}
+
+      <Pagination page={page} pageSize={PAGE_SIZE} total={shown.length} onPage={setPage} />
     </div>
   );
 }

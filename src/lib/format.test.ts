@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fmtClock, fmtTimeFull, progressPercent } from './format';
+import { fmtClock, fmtLogTime, fmtTimeFull, progressPercent } from './format';
 
 describe('fmtClock', () => {
   it('补零分秒', () => {
@@ -27,5 +27,24 @@ describe('fmtTimeFull', () => {
     const s = fmtTimeFull(Date.UTC(2026, 0, 2, 3, 4, 5));
     expect(s).toMatch(/\d{4}/);
     expect(s).toContain(':');
+  });
+});
+
+describe('fmtLogTime', () => {
+  const now = new Date(2026, 9, 16, 15, 0, 0).getTime();
+
+  it('同一天只显示时分', () => {
+    const t = new Date(2026, 9, 16, 9, 5, 0).getTime();
+    expect(fmtLogTime(t, now)).toBe('09:05');
+  });
+
+  it('跨天补「月-日 时:分」', () => {
+    const t = new Date(2026, 8, 30, 23, 59, 0).getTime();
+    expect(fmtLogTime(t, now)).toBe('9-30 23:59');
+  });
+
+  it('跨年也能区分', () => {
+    const t = new Date(2025, 11, 31, 1, 2, 0).getTime();
+    expect(fmtLogTime(t, now)).toBe('12-31 01:02');
   });
 });
