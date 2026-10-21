@@ -11,6 +11,16 @@ import { useNowPlayingStore } from '@/store/nowPlayingStore';
 import { usePlayerStore } from '@/store/playerStore';
 import { useSettingsStore } from '@/store/settingsStore';
 
+function CurrentSegmentText() {
+  const segs = usePlayerStore((s) => s.segs);
+  const index = usePlayerStore((s) => s.index);
+  const seg = segs[index];
+  if (!seg || !seg.text.trim()) {
+    return <span className="text-muted-foreground">暂无朗读文本</span>;
+  }
+  return <span className="rounded bg-primary px-1 py-0.5 text-primary-foreground">{seg.text}</span>;
+}
+
 function ProgressBar({ compact }: { compact: boolean }) {
   const player = usePlayerStore();
   const disabled = player.duration <= 0;
@@ -155,6 +165,9 @@ export function PlayerDock() {
             </span>
             <Transport large />
             <VolumeAndRate />
+          </div>
+          <div className="mt-5 rounded-[10px] bg-muted/60 px-4 py-3.5 text-[13.5px] leading-[1.9]">
+            <CurrentSegmentText />
           </div>
           {err && <p className="mt-3 text-sm text-destructive">{err}</p>}
         </div>
