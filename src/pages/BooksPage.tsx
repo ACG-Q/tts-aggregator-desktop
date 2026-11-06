@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { BookOpen, Play, Upload } from 'lucide-react';
+import { BookOpen, History, Play, Upload } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -8,6 +8,8 @@ import { readTextFile } from '@/lib/encoding';
 import { parseToc } from '@/lib/toc';
 import { playChapter } from '@/store/bookPlay';
 import { deps } from '@/store/deps';
+import { useResumeStore } from '@/store/resumeStore';
+import { useSettingsStore } from '@/store/settingsStore';
 import type { Book } from '@/types/models';
 
 function BookCard({ book, onOpen, onPlay }: {
@@ -71,12 +73,28 @@ export function BooksPage() {
   const [busy, setBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const nav = useNavigate();
+  const snapshot = useResumeStore((s) => s.snapshot);
+  const clearSnapshot = useResumeStore((s) => s.clear);
+  const resumeEnabled = useSettingsStore((s) => s.appPrefs.resumeLast);
 
   const reload = useCallback(async () => {
     setBooks(await deps().books.getAll());
   }, []);
 
   useEffect(() => { void reload(); }, [reload]);
+
+  const bookSnapshot = resumeEnabled && snapshot?.source.kind === 'book' ? snapshot : null;
+  const resumeSource = bookSnapshot?.source.kind === 'book' ? bookSnapshot.source : null;
+  const resumeBook = resumeSource
+    ? books.find((b) => b.id === resumeSource.bookId) ?? null
+    : null;
+
+  useEffect(() => {
+    if (!resumeSource || books.length === 0) return;
+    if (!books.some((b) => b.id === resumeSource.bookId)) {
+      void clearSnapshot();
+    }
+  }, [books, resumeSource, clearSnapshot]);
 
   async function onImport(file: File): Promise<void> {
     setBusy(true);
@@ -123,6 +141,29 @@ export function BooksPage() {
           </>
         }
       />
+
+      {bookSnapshot && resumeSource && resumeBook && (
+        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-primary/30 bg-primary/5 px-4 py-3">
+          <History className="h-4 w-4 text-primary" />
+          <div className="min-w-0 flex-1 text-sm">
+            <span className="font-medium">继续上次收听</span>
+            <span className="ml-2 text-muted-foreground">
+              《{bookSnapshot.bookTitle ?? resumeBook.title}》第 {resumeSource.chapterIdx + 1} 章 · 第 {bookSnapshot.segIndex + 1} 段
+            </span>
+          </div>
+          <Button
+            size="sm"
+            onClick={() => void playChapter(
+              resumeSource.bookId,
+              resumeSource.chapterIdx,
+              bookSnapshot.segIndex,
+            )}
+          >
+            继续
+          </Button>
+          <Button size="sm" variant="ghost" onClick={() => void clearSnapshot()}>忽略</Button>
+        </div>
+      )}
 
       {books.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border bg-card/50 py-16 text-center">

@@ -28,11 +28,11 @@ export function BookDetailPage() {
   const [deleteFor, setDeleteFor] = useState<Book | null>(null);
   const [renameFor, setRenameFor] = useState<Book | null>(null);
   const [renameText, setRenameText] = useState('');
-  const player = usePlayerStore();
+  const source = usePlayerStore((s) => s.source);
+  const status = usePlayerStore((s) => s.status);
 
-  const src = player.source;
-  const currentChapter = src?.kind === 'book' && src.bookId === id ? src.chapterIdx : null;
-  const playing = player.status !== 'idle';
+  const currentChapter = source?.kind === 'book' && source.bookId === id ? source.chapterIdx : null;
+  const playing = status !== 'idle';
 
   const reload = useCallback(async () => {
     const books = await deps().books.getAll();
