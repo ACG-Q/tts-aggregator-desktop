@@ -42,12 +42,25 @@ export interface PoolConfig {
 export interface ShareConfig { enabled: boolean; port: number; token: string; localhostOnly: boolean }
 export type ThemeMode = 'system' | 'light' | 'dark';
 
+export type PlaySource =
+  | { kind: 'text' }
+  | { kind: 'book'; bookId: string; chapterIdx: number };
+
 export interface AppPrefs {
   probeConcurrency: number;
   theme: ThemeMode;
   playbackRate: number;
   volume: number;
+  failThreshold: number;
+  cooldownMinutes: number;
+  autoTestOnLaunch: boolean;
+  sleepMinutes: number;
+  resumeLast: boolean;
 }
+
+export const FAIL_THRESHOLD_OPTIONS = [2, 3, 5, 10] as const;
+export const COOLDOWN_MINUTES_OPTIONS = [1, 5, 10, 30, 60] as const;
+export const SLEEP_MINUTES_OPTIONS = [0, 15, 30, 60] as const;
 
 export interface Book {
   id: string;
@@ -97,7 +110,20 @@ export const DEFAULT_APP_PREFS: AppPrefs = {
   theme: 'system',
   playbackRate: 1,
   volume: 100,
+  failThreshold: 3,
+  cooldownMinutes: 10,
+  autoTestOnLaunch: false,
+  sleepMinutes: 0,
+  resumeLast: true,
 };
+
+function pickOption(raw: unknown, options: readonly number[], fallback: number): number {
+  return typeof raw === 'number' && options.includes(raw) ? raw : fallback;
+}
+
+function pickBool(raw: unknown, fallback: boolean): boolean {
+  return typeof raw === 'boolean' ? raw : fallback;
+}
 
 export function normalizeAppPrefs(raw: unknown): AppPrefs {
   const o = (typeof raw === 'object' && raw !== null ? raw : {}) as Partial<AppPrefs>;
@@ -117,6 +143,24 @@ export function normalizeAppPrefs(raw: unknown): AppPrefs {
       typeof o.volume === 'number' && o.volume >= 0 && o.volume <= 100
         ? o.volume
         : DEFAULT_APP_PREFS.volume,
+    failThreshold: pickOption(o.failThreshold, FAIL_THRESHOLD_OPTIONS, DEFAULT_APP_PREFS.failThreshold),
+    cooldownMinutes: pickOption(o.cooldownMinutes, COOLDOWN_MINUTES_OPTIONS, DEFAULT_APP_PREFS.cooldownMinutes),
+    autoTestOnLaunch: pickBool(o.autoTestOnLaunch, DEFAULT_APP_PREFS.autoTestOnLaunch),
+    sleepMinutes: pickOption(o.sleepMinutes, SLEEP_MINUTES_OPTIONS, DEFAULT_APP_PREFS.sleepMinutes),
+    resumeLast: pickBool(o.resumeLast, DEFAULT_APP_PREFS.resumeLast),
+  };
+}
+
+export function normalizeSynth(raw: unknown): SynthSettings {
+  const o = (typeof raw === 'object' && raw !== null ? raw : {}) as Partial<SynthSettings>;
+  const clamp = (v: unknown, fallback: number): number =>
+    typeof v === 'number' && Number.isFinite(v)
+      ? Math.max(-100, Math.min(100, Math.round(v)))
+      : fallback;
+  return {
+    voice: typeof o.voice === 'string' ? o.voice : '',
+    rate: clamp(o.rate, 0),
+    pitch: clamp(o.pitch, 0),
   };
 }
 
