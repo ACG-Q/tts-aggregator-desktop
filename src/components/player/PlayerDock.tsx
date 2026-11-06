@@ -1,105 +1,136 @@
 import { useState } from 'react';
 import {
-  ChevronDown, ChevronUp, Pause, Play, RotateCcw, RotateCw, SkipBack, SkipForward, Volume2,
+  ChevronDown, ChevronUp, Pause, Play, RotateCcw, RotateCw, SkipBack, SkipForward, Timer, Volume2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
-import { fmtClock } from '@/lib/format';
+import { SentenceText } from '@/components/player/SentenceText';
 import { RATE_OPTIONS } from '@/components/player/rates';
+import { useSleepCountdown } from '@/hooks/useSleepCountdown';
+import { fmtClock } from '@/lib/format';
 import { useNowPlayingStore } from '@/store/nowPlayingStore';
 import { usePlayerStore } from '@/store/playerStore';
 import { useSettingsStore } from '@/store/settingsStore';
+import { SLEEP_MINUTES_OPTIONS } from '@/types/models';
 
 function CurrentSegmentText() {
-  const segs = usePlayerStore((s) => s.segs);
-  const index = usePlayerStore((s) => s.index);
-  const seg = segs[index];
+  const seg = usePlayerStore((s) => s.segs[s.index]);
+  const currentTime = usePlayerStore((s) => s.currentTime);
+  const duration = usePlayerStore((s) => s.duration);
   if (!seg || !seg.text.trim()) {
     return <span className="text-muted-foreground">暂无朗读文本</span>;
   }
-  return <span className="rounded bg-primary px-1 py-0.5 text-primary-foreground">{seg.text}</span>;
+  const progress = duration > 0 ? currentTime / duration : 0;
+  return <SentenceText text={seg.text} progress={progress} />;
 }
 
 function ProgressBar({ compact }: { compact: boolean }) {
-  const player = usePlayerStore();
-  const disabled = player.duration <= 0;
-  const value = Math.min(player.currentTime, player.duration || 0);
+  const currentTime = usePlayerStore((s) => s.currentTime);
+  const duration = usePlayerStore((s) => s.duration);
+  const disabled = duration <= 0;
+  const value = Math.min(currentTime, duration || 0);
   return (
     <div className={`flex items-center gap-2 ${compact ? 'flex-1' : 'w-full'}`}>
       <span className="w-10 shrink-0 text-right text-xs tabular-nums text-muted-foreground">
-        {disabled ? '--:--' : fmtClock(player.currentTime)}
+        {disabled ? '--:--' : fmtClock(currentTime)}
       </span>
       <Slider
         disabled={disabled}
         value={[value]}
-        max={Math.max(player.duration, 1)}
+        max={Math.max(duration, 1)}
         step={0.5}
-        onValueChange={([v]) => player.seek(v)}
+        onValueChange={([v]) => usePlayerStore.getState().seek(v)}
         className="flex-1"
       />
       <span className="w-10 shrink-0 text-xs tabular-nums text-muted-foreground">
-        {disabled ? '--:--' : fmtClock(player.duration)}
+        {disabled ? '--:--' : fmtClock(duration)}
       </span>
     </div>
   );
 }
 
 function Transport({ large }: { large: boolean }) {
-  const player = usePlayerStore();
-  const idle = player.status === 'idle';
+  const status = usePlayerStore((s) => s.status);
+  const idle = status === 'idle';
   const size = large ? 'default' : 'icon';
   const iconCls = large ? 'h-5 w-5' : 'h-4 w-4';
+  const player = (): ReturnType<typeof usePlayerStore.getState> => usePlayerStore.getState();
   return (
     <div className={`flex items-center ${large ? 'gap-4' : 'gap-1'}`}>
-      <Button variant="ghost" size={size} disabled={idle} onClick={() => player.jumpTo(player.index - 1)} title="上一段">
+      <Button variant="ghost" size={size} disabled={idle} onClick={() => player().jumpTo(player().index - 1)} title="上一段">
         <SkipBack className={iconCls} />
       </Button>
-      <Button variant="ghost" size={size} title="后退 15 秒" onClick={() => player.seek(player.currentTime - 15)}>
+      <Button variant="ghost" size={size} title="后退 10 秒" onClick={() => player().seek(player().currentTime - 10)}>
         <RotateCcw className={iconCls} />
       </Button>
-      {player.status === 'running' ? (
-        <Button size={size} onClick={player.pause} title="暂停">
+      {status === 'running' ? (
+        <Button size={size} onClick={() => player().pause()} title="暂停">
           <Pause className={iconCls} />
         </Button>
       ) : (
-        <Button size={size} disabled={idle} onClick={() => void player.resume()} title="播放">
+        <Button size={size} disabled={idle} onClick={() => void player().resume()} title="播放">
           <Play className={iconCls} />
         </Button>
       )}
-      <Button variant="ghost" size={size} title="前进 15 秒" onClick={() => player.seek(player.currentTime + 15)}>
+      <Button variant="ghost" size={size} title="前进 10 秒" onClick={() => player().seek(player().currentTime + 10)}>
         <RotateCw className={iconCls} />
       </Button>
-      <Button variant="ghost" size={size} disabled={idle} onClick={player.skipNext} title="下一段">
+      <Button variant="ghost" size={size} disabled={idle} onClick={() => player().skipNext()} title="下一段">
         <SkipForward className={iconCls} />
       </Button>
     </div>
   );
 }
 
+function SleepTimerSelect() {
+  const sleepMinutes = usePlayerStore((s) => s.sleepMinutes);
+  const endsAt = usePlayerStore((s) => s.sleepEndsAt);
+  const countdown = useSleepCountdown(endsAt);
+  return (
+    <div className="flex items-center gap-1">
+      <Timer className="h-4 w-4 shrink-0 text-muted-foreground" />
+      <Select
+        value={String(sleepMinutes)}
+        onValueChange={(v) => usePlayerStore.getState().setSleepTimer(Number(v))}
+      >
+        <SelectTrigger className="h-8 w-24"><SelectValue /></SelectTrigger>
+        <SelectContent>
+          {SLEEP_MINUTES_OPTIONS.map((m) => (
+            <SelectItem key={m} value={String(m)}>{m === 0 ? '无定时' : `${m} 分钟`}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      {countdown && <span className="w-10 text-xs tabular-nums text-muted-foreground">{countdown}</span>}
+    </div>
+  );
+}
+
 function VolumeAndRate() {
-  const player = usePlayerStore();
-  const { appPrefs, saveAppPrefs } = useSettingsStore();
+  const volume = usePlayerStore((s) => s.volume);
+  const playbackRate = usePlayerStore((s) => s.playbackRate);
+  const appPrefs = useSettingsStore((s) => s.appPrefs);
+  const saveAppPrefs = useSettingsStore((s) => s.saveAppPrefs);
   return (
     <div className="flex items-center gap-3">
       <div className="flex w-28 items-center gap-1">
         <Volume2 className="h-4 w-4 shrink-0 text-muted-foreground" />
         <Slider
-          value={[player.volume]}
+          value={[volume]}
           max={100}
           step={1}
           onValueChange={([v]) => {
-            player.setVolume(v);
+            usePlayerStore.getState().setVolume(v);
             void saveAppPrefs({ ...appPrefs, volume: v });
           }}
           className="flex-1"
         />
       </div>
       <Select
-        value={String(player.playbackRate)}
+        value={String(playbackRate)}
         onValueChange={(v) => {
           const rate = Number(v);
-          player.setPlaybackRate(rate);
+          usePlayerStore.getState().setPlaybackRate(rate);
           void saveAppPrefs({ ...appPrefs, playbackRate: rate });
         }}
       >
@@ -114,8 +145,8 @@ function VolumeAndRate() {
 
 function BookMeta({ large }: { large: boolean }) {
   const now = useNowPlayingStore((s) => s.current);
-  const src = usePlayerStore((s) => s.source);
-  const isBook = src?.kind === 'book';
+  const source = usePlayerStore((s) => s.source);
+  const isBook = source?.kind === 'book';
   const cover = now?.title.slice(0, 1) ?? '文';
   return (
     <div className="flex min-w-0 items-center gap-3">
@@ -138,14 +169,16 @@ function BookMeta({ large }: { large: boolean }) {
 
 export function PlayerDock() {
   const [expanded, setExpanded] = useState(false);
-  const player = usePlayerStore();
+  const status = usePlayerStore((s) => s.status);
+  const error = usePlayerStore((s) => s.error);
+  const index = usePlayerStore((s) => s.index);
+  const segCount = usePlayerStore((s) => s.segs.length);
   const now = useNowPlayingStore((s) => s.current);
 
-  if (player.status === 'idle') return null;
+  if (status === 'idle') return null;
 
-  const err = player.error;
-  const segPos = player.segs.length > 0
-    ? `段 ${Math.min(player.index + 1, player.segs.length)}/${player.segs.length}`
+  const segPos = segCount > 0
+    ? `段 ${Math.min(index + 1, segCount)}/${segCount}`
     : '';
 
   if (expanded) {
@@ -159,17 +192,20 @@ export function PlayerDock() {
             </Button>
           </div>
           <div className="mb-3"><ProgressBar compact={false} /></div>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-4">
             <span className="text-xs tabular-nums text-muted-foreground">
               {now ? `第 ${now.chapterIdx + 1}/${now.chapterCount} 章` : segPos}
             </span>
             <Transport large />
-            <VolumeAndRate />
+            <div className="flex items-center gap-3">
+              <SleepTimerSelect />
+              <VolumeAndRate />
+            </div>
           </div>
-          <div className="mt-5 rounded-[10px] bg-muted/60 px-4 py-3.5 text-[13.5px] leading-[1.9]">
+          <div className="mt-5 max-h-40 overflow-y-auto rounded-[10px] bg-muted/60 px-4 py-3.5 text-[13.5px] leading-[1.9]">
             <CurrentSegmentText />
           </div>
-          {err && <p className="mt-3 text-sm text-destructive">{err}</p>}
+          {error && <p className="mt-3 text-sm text-destructive">{error}</p>}
         </div>
       </div>
     );
@@ -177,7 +213,7 @@ export function PlayerDock() {
 
   return (
     <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card shadow-[0_-4px_16px_rgba(0,0,0,0.08)]">
-      {err && <p className="px-4 pt-1 text-xs text-destructive">{err}</p>}
+      {error && <p className="px-4 pt-1 text-xs text-destructive">{error}</p>}
       <div className="flex h-16 items-center gap-4 px-4">
         <BookMeta large={false} />
         <div className="hidden flex-col items-center gap-0.5 sm:flex">
