@@ -1,12 +1,22 @@
 import { create } from 'zustand';
+import { toast } from 'sonner';
 import { splitForReading } from '../lib/split';
+import type { PlaySource } from '../types/models';
+
+export type { PlaySource };
 
 export type SegStatus = 'pending' | 'synthesizing' | 'playing' | 'done' | 'error';
 export type PlayerStatus = 'idle' | 'running' | 'paused';
-export type PlaySource =
-  | { kind: 'text' }
-  | { kind: 'book'; bookId: string; chapterIdx: number };
 export interface Segment { text: string; status: SegStatus }
+
+export interface SnapshotData {
+  source: PlaySource;
+  segIndex: number;
+  text: string;
+  finished: boolean;
+}
+
+export type SnapshotSink = (data: SnapshotData) => void;
 
 export interface PlayerHooks {
   onSegDone?: (segIdx: number, source: PlaySource) => void;
@@ -26,13 +36,20 @@ interface PlayerState {
   volume: number;
   playbackRate: number;
   source: PlaySource | null;
+  sleepEndsAt: number | null;
+  sleepMinutes: number;
+  defaultSleepMinutes: number;
   initPlayback(volume: number, rate: number): void;
   setSynth(fn: SynthFn): void;
   setHooks(h: PlayerHooks): void;
   setText(t: string): void;
   setVolume(v: number): void;
   setPlaybackRate(r: number): void;
-  start(text: string): Promise<void>;
+  setDefaultSleepMinutes(minutes: number): void;
+  setSleepTimer(minutes: number): void;
+  clearSleepTimer(): void;
+  setSnapshotSink(fn: SnapshotSink): void;
+  start(text: string, fromSeg?: number): Promise<void>;
   startSegs(segTexts: string[], source: PlaySource, fromSeg?: number): Promise<void>;
   pause(): void;
   resume(): Promise<void>;
@@ -49,6 +66,41 @@ let resolveEnded: (() => void) | null = null;
 let currentUrl: string | null = null;
 let hooks: PlayerHooks = {};
 let prefetch: { index: number; promise: Promise<ArrayBuffer> } | null = null;
+let snapshotSink: SnapshotSink | null = null;
+let sleepTimeout: ReturnType<typeof setTimeout> | null = null;
+
+function clearSleepTimeout(): void {
+  if (sleepTimeout) {
+    clearTimeout(sleepTimeout);
+    sleepTimeout = null;
+  }
+}
+
+function scheduleSleep(endsAt: number | null): void {
+  clearSleepTimeout();
+  if (endsAt === null) return;
+  const delay = Math.max(0, endsAt - Date.now());
+  sleepTimeout = setTimeout(() => {
+    sleepTimeout = null;
+    const s = usePlayerStore.getState();
+    usePlayerStore.setState({ sleepEndsAt: null, sleepMinutes: 0 });
+    if (s.status === 'running' || s.status === 'paused') {
+      s.pause();
+      toast('睡眠定时已结束');
+    }
+  }, delay);
+}
+
+function emitSnapshot(finished = false, segIndex = usePlayerStore.getState().index): void {
+  const s = usePlayerStore.getState();
+  if (!s.source || !snapshotSink) return;
+  snapshotSink({
+    source: s.source,
+    segIndex,
+    text: s.source.kind === 'text' ? s.text : '',
+    finished,
+  });
+}
 
 function revokeUrl(): void {
   if (currentUrl) {
@@ -75,6 +127,7 @@ async function pump(token: number): Promise<void> {
     const s = store.getState();
     if (s.status !== 'running') return;
     if (s.index >= s.segs.length) {
+      emitSnapshot(true, s.segs.length);
       const allError = s.segs.length > 0 && s.segs.every((x) => x.status === 'error');
       const src = s.source ?? { kind: 'text' as const };
       store.setState({
@@ -159,6 +212,7 @@ async function pump(token: number): Promise<void> {
       index: i + 1,
       error: null,
     });
+    emitSnapshot(false);
     hooks.onSegDone?.(i, store.getState().source ?? { kind: 'text' });
     prefetch = null;
   }
@@ -186,6 +240,9 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   volume: 100,
   playbackRate: 1,
   source: null,
+  sleepEndsAt: null,
+  sleepMinutes: 0,
+  defaultSleepMinutes: 0,
 
   initPlayback(volume, rate) {
     audio.volume = volume / 100;
@@ -210,8 +267,24 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     audio.playbackRate = r;
     set({ playbackRate: r });
   },
+  setDefaultSleepMinutes(minutes) {
+    set({ defaultSleepMinutes: Math.max(0, minutes) });
+  },
+  setSleepTimer(minutes) {
+    const safe = Math.max(0, minutes);
+    const endsAt = safe > 0 ? Date.now() + safe * 60_000 : null;
+    set({ sleepMinutes: safe, sleepEndsAt: endsAt });
+    scheduleSleep(endsAt);
+  },
+  clearSleepTimer() {
+    clearSleepTimeout();
+    set({ sleepEndsAt: null, sleepMinutes: 0 });
+  },
+  setSnapshotSink(fn) {
+    snapshotSink = fn;
+  },
 
-  async start(text) {
+  async start(text, fromSeg = 0) {
     resetPlayback();
     hooks = {};
     const segs = splitForReading(text).map((t) => ({ text: t, status: 'pending' as SegStatus }));
@@ -219,10 +292,16 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       set({ error: '没有可朗读的文本' });
       return;
     }
+    const from = Math.min(Math.max(fromSeg, 0), segs.length - 1);
+    const minutes = get().defaultSleepMinutes;
+    const endsAt = minutes > 0 ? Date.now() + minutes * 60_000 : null;
     set({
       text, status: 'running', source: { kind: 'text' }, error: null,
-      currentTime: 0, duration: 0, index: 0, segs,
+      currentTime: 0, duration: 0, index: from,
+      segs: segs.map((s, i) => (i < from ? { ...s, status: 'done' as SegStatus } : s)),
+      sleepMinutes: minutes, sleepEndsAt: endsAt,
     });
+    scheduleSleep(endsAt);
     const token = ++runToken;
     void pump(token);
   },
@@ -239,12 +318,17 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       index: from,
       segs: segTexts.map((t, i) => ({ text: t, status: i < from ? 'done' : ('pending' as SegStatus) })),
     });
+    const minutes = get().defaultSleepMinutes;
+    const endsAt = minutes > 0 ? Date.now() + minutes * 60_000 : null;
+    set({ sleepMinutes: minutes, sleepEndsAt: endsAt });
+    scheduleSleep(endsAt);
     const token = ++runToken;
     void pump(token);
   },
 
   pause() {
     if (get().status !== 'running') return;
+    emitSnapshot(false);
     audio.pause();
     set({ status: 'paused' });
   },
@@ -261,9 +345,14 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   },
 
   stop() {
+    emitSnapshot(false);
+    clearSleepTimeout();
     resetPlayback();
     hooks = {};
-    set({ status: 'idle', segs: [], index: 0, error: null, currentTime: 0, duration: 0, source: null });
+    set({
+      status: 'idle', segs: [], index: 0, error: null,
+      currentTime: 0, duration: 0, source: null, sleepEndsAt: null, sleepMinutes: 0,
+    });
   },
 
   skipNext() {
