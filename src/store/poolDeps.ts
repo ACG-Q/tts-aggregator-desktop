@@ -20,6 +20,10 @@ export function makePoolDeps(nodes: TtsNode[], pool: PoolConfig): PoolDeps {
       await deps().logs.insert(l);
       await useLogsStore.getState().load();
     },
+    getPolicy: () => {
+      const p = useSettingsStore.getState().appPrefs;
+      return { failThreshold: p.failThreshold, cooldownMinutes: p.cooldownMinutes };
+    },
     synth: async (n, t, p) => {
       const bytes = await deps().api.synthesize(n, t, p, SYNTH_RETRIES_PER_NODE);
       if (!bytes) throw new Error('v1/兼容端点均不可用');

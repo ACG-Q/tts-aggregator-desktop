@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { synthesize, type PoolDeps } from './pool';
+import { DEFAULT_POLICY, synthesize, type PoolDeps, type PoolPolicy } from './pool';
 import { DEFAULT_POOL, type CallLog, type PoolConfig, type TtsNode } from '../types/models';
 
 function mkNode(id: string, over: Partial<TtsNode> = {}): TtsNode {
@@ -21,10 +21,12 @@ function harness(
   nodes: TtsNode[],
   failUrls: string[] = [],
   config: Partial<PoolConfig> = {},
+  policy: Partial<PoolPolicy> = {},
 ): Harness {
   const logs: CallLog[] = [];
   const upserts: TtsNode[] = [];
   const cfg: PoolConfig = { ...DEFAULT_POOL, ...config };
+  const pol: PoolPolicy = { ...DEFAULT_POLICY, ...policy };
   let clock = 100000;
   const deps: PoolDeps = {
     getNodes: () => nodes.map((n) => upserts.filter((u) => u.id === n.id).pop() ?? n),
@@ -32,6 +34,7 @@ function harness(
     updateConfig: async (fn) => { Object.assign(cfg, fn(cfg)); },
     upsertNode: async (n) => { upserts.push(n); },
     insertLog: async (l) => { logs.push(l); },
+    getPolicy: () => pol,
     synth: async (n) => {
       if (failUrls.includes(n.baseUrl)) throw new Error('v1/兼容端点均不可用');
       return new ArrayBuffer(4);
@@ -74,6 +77,17 @@ describe('AUTO', () => {
     const h = harness([a]);
     await expect(synthesize(h.deps, 'x', { voice: '', rate: 0, pitch: 0, style: '' }))
       .rejects.toThrow('没有可用节点');
+  });
+
+  it('自定义失败阈值 2 次即进入冷却，冷却时长使用策略值', async () => {
+    const a = mkNode('a');
+    const h = harness([a], [a.baseUrl], {}, { failThreshold: 2, cooldownMinutes: 5 });
+    const prefs = { voice: '', rate: 0, pitch: 0, style: '' };
+    await expect(synthesize(h.deps, 'x', prefs)).rejects.toThrow();
+    await expect(synthesize(h.deps, 'x', prefs)).rejects.toThrow();
+    const cooled = h.upserts.find((n) => n.id === 'a' && n.cooldownUntil > 0);
+    expect(cooled).toBeTruthy();
+    expect(cooled!.cooldownUntil).toBeGreaterThan(0);
   });
 });
 

@@ -4,10 +4,15 @@ import {
 } from '../types/models';
 
 export const FAIL_LIMIT = 3;
-export const COOLDOWN_AFTER = 3;
-export const COOLDOWN_MS = 10 * 60 * 1000;
 export const TEXT_PREVIEW_LEN = 80;
 export const SYNTH_RETRIES_PER_NODE = 1;
+
+export interface PoolPolicy {
+  failThreshold: number;
+  cooldownMinutes: number;
+}
+
+export const DEFAULT_POLICY: PoolPolicy = { failThreshold: 3, cooldownMinutes: 10 };
 
 export interface PoolDeps {
   getNodes(): TtsNode[];
@@ -15,6 +20,7 @@ export interface PoolDeps {
   updateConfig(fn: (c: PoolConfig) => PoolConfig): Promise<void>;
   upsertNode(node: TtsNode): Promise<void>;
   insertLog(log: CallLog): Promise<void>;
+  getPolicy(): PoolPolicy;
   synth(node: TtsNode, text: string, prefs: SynthPrefs): Promise<ArrayBuffer>;
   now(): number;
 }
@@ -53,8 +59,11 @@ async function attempt(
     const ms = deps.now() - t0;
     const err = e instanceof Error ? e.message : String(e);
     const failCount = node.failCount + 1;
-    const triggered = failCount >= COOLDOWN_AFTER && mode !== 'MANUAL';
-    const cooldownUntil = triggered ? deps.now() + COOLDOWN_MS : node.cooldownUntil;
+    const policy = deps.getPolicy();
+    const triggered = failCount >= policy.failThreshold && mode !== 'MANUAL';
+    const cooldownUntil = triggered
+      ? deps.now() + policy.cooldownMinutes * 60_000
+      : node.cooldownUntil;
     await deps.upsertNode({ ...node, failCount, cooldownUntil });
     await deps.insertLog({
       time: deps.now(), nodeUrl: node.baseUrl, mode, textLen: text.length,
