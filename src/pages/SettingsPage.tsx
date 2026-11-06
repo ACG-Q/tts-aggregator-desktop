@@ -10,28 +10,35 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Slider } from '@/components/ui/slider';
 import { cn } from '@/lib/utils';
 import { PageHeader } from '@/components/PageHeader';
+import { DataSection } from '@/components/settings/DataSection';
 import { voiceDisplayName } from '@/lib/voices';
+import { useNodesStore } from '@/store/nodesStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import { useVoicesStore } from '@/store/voicesStore';
 import { notifyShare } from '@/store/shareSync';
-import type { ThemeMode } from '@/types/models';
+import {
+  COOLDOWN_MINUTES_OPTIONS, FAIL_THRESHOLD_OPTIONS, SLEEP_MINUTES_OPTIONS,
+  type ThemeMode,
+} from '@/types/models';
 
 const THEME_OPTIONS: [ThemeMode, string][] = [
   ['system', '跟随系统'], ['light', '浅色'], ['dark', '深色'],
 ];
 
-type SectionKey = 'voice' | 'appearance' | 'probe' | 'share';
+type SectionKey = 'voice' | 'appearance' | 'schedule' | 'data' | 'share';
 
 const SECTIONS: [SectionKey, string][] = [
   ['voice', '语音参数'],
   ['appearance', '外观与播放'],
-  ['probe', '探测'],
+  ['schedule', '调度与探测'],
+  ['data', '数据'],
   ['share', '局域网分享'],
 ];
 
 export function SettingsPage() {
   const { synth, saveSynth, appPrefs, saveAppPrefs, share, saveShare } = useSettingsStore();
   const { voices } = useVoicesStore();
+  const probing = useNodesStore((s) => s.probing);
   const [copied, setCopied] = useState(false);
   const [ip, setIp] = useState('');
   const [running, setRunning] = useState(false);
@@ -149,28 +156,96 @@ export function SettingsPage() {
                   <Slider value={[appPrefs.playbackRate]} min={0.5} max={2} step={0.25}
                     onValueChange={([v]) => void saveAppPrefs({ ...appPrefs, playbackRate: v })} />
                 </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">默认睡眠定时</Label>
+                  <Select
+                    value={String(appPrefs.sleepMinutes)}
+                    onValueChange={(v) => void saveAppPrefs({ ...appPrefs, sleepMinutes: Number(v) })}
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {SLEEP_MINUTES_OPTIONS.map((m) => (
+                        <SelectItem key={m} value={String(m)}>{m === 0 ? '关闭' : `${m} 分钟`}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <label className="flex items-center gap-2 text-sm">
+                  <Checkbox
+                    checked={appPrefs.resumeLast}
+                    onCheckedChange={(c) => void saveAppPrefs({ ...appPrefs, resumeLast: c === true })}
+                  />
+                  自动续听
+                </label>
               </div>
             </section>
           )}
 
-          {active === 'probe' && (
+          {active === 'schedule' && (
             <section className="space-y-4">
               <div>
-                <h2 className="text-base font-medium">探测</h2>
-                <p className="text-sm text-muted-foreground">全部探测时同时发起的请求数。</p>
+                <h2 className="text-base font-medium">调度与探测</h2>
+                <p className="text-sm text-muted-foreground">失败冷却策略与节点探测行为。</p>
               </div>
-              <div className="flex items-center gap-3">
-                <Label className="text-xs text-muted-foreground">并发数</Label>
-                <Input type="number" min={1} max={8} className="w-20"
-                  value={appPrefs.probeConcurrency}
-                  onChange={(e) => void saveAppPrefs({
-                    ...appPrefs,
-                    probeConcurrency: Math.max(1, Math.min(8, Number(e.target.value) || 1)),
-                  })} />
-                <span className="text-sm text-muted-foreground">取值 1-8</span>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">失败阈值</Label>
+                  <Select
+                    value={String(appPrefs.failThreshold)}
+                    onValueChange={(v) => void saveAppPrefs({ ...appPrefs, failThreshold: Number(v) })}
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {FAIL_THRESHOLD_OPTIONS.map((n) => (
+                        <SelectItem key={n} value={String(n)}>{n} 次</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">冷却时长</Label>
+                  <Select
+                    value={String(appPrefs.cooldownMinutes)}
+                    onValueChange={(v) => void saveAppPrefs({ ...appPrefs, cooldownMinutes: Number(v) })}
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {COOLDOWN_MINUTES_OPTIONS.map((n) => (
+                        <SelectItem key={n} value={String(n)}>{n} 分钟</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Label className="text-xs text-muted-foreground">并发数</Label>
+                  <Input type="number" min={1} max={8} className="w-20"
+                    value={appPrefs.probeConcurrency}
+                    onChange={(e) => void saveAppPrefs({
+                      ...appPrefs,
+                      probeConcurrency: Math.max(1, Math.min(8, Number(e.target.value) || 1)),
+                    })} />
+                  <span className="text-sm text-muted-foreground">1-8</span>
+                </div>
+                <label className="flex items-center gap-2 text-sm">
+                  <Checkbox
+                    checked={appPrefs.autoTestOnLaunch}
+                    onCheckedChange={(c) => void saveAppPrefs({ ...appPrefs, autoTestOnLaunch: c === true })}
+                  />
+                  启动时自动测试节点
+                </label>
               </div>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={probing}
+                onClick={() => void useNodesStore.getState().probeAll()}
+              >
+                立即测试全部节点
+              </Button>
             </section>
           )}
+
+          {active === 'data' && <DataSection />}
 
           {active === 'share' && (
             <section className="space-y-4">
