@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "tmp-desktop",
+  "productName": "TTS Aggregator",
   "version": "0.1.0",
   "identifier": "com.liuji.tmp-desktop",
   "build": {
@@ -12,13 +12,22 @@
   "app": {
     "windows": [
       {
-        "title": "tmp-desktop",
-        "width": 800,
-        "height": 600
+        "title": "TTS Aggregator",
+        "width": 1200,
+        "height": 800,
+        "minWidth": 960,
+        "minHeight": 640
       }
     ],
     "security": {
-      "csp": null
+      "csp": {
+        "default-src": "'self'",
+        "script-src": "'self'",
+        "connect-src": "ipc: http://ipc.localhost ws://localhost:1420",
+        "img-src": "'self' data: blob:",
+        "media-src": "'self' blob:",
+        "style-src": "'self' 'unsafe-inline'"
+      }
     }
   },
   "bundle": {
