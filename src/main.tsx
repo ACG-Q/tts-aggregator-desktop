@@ -48,7 +48,7 @@ async function bootstrap() {
       snapshot.chapterTitle = now.chapterTitle;
       snapshot.chapterCount = now.chapterCount;
     }
-    if (d.finished && d.source.kind === 'text') {
+    if (d.finished) {
       void useResumeStore.getState().clear();
       return;
     }

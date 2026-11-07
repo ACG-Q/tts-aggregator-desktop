@@ -1,6 +1,6 @@
 # 阶段一：朗读播放体验与设置补齐 实现计划
 
-> **面向 AI 代理的工作者：** 必需子技能：使用 superpowers:subagent-driven-development（推荐）或 superpowers:executing-plans 逐任务实现此计划。步骤使用复选框（`- [ ]`）语法来跟踪进度。
+> **面向 AI 代理的工作者：** 必需子技能：使用 superpowers:subagent-driven-development（推荐）或 superpowers:executing-plans 逐任务实现此计划。步骤使用复选框（`- [x]`）语法来跟踪进度。
 
 **目标：** 为桌面端补齐句级高亮、睡眠定时、±10 秒、字数估算、可配置调度参数、启动自动探测、配置导入导出与续听快照。
 
@@ -47,7 +47,7 @@
 - 修改：`src/types/models.ts:1-130`
 - 测试：`src/types/models.test.ts`
 
-- [ ] **步骤 1：编写失败的测试**
+- [x] **步骤 1：编写失败的测试**
 
 将 `src/types/models.test.ts` 替换为：
 
@@ -102,12 +102,12 @@ describe('normalizeSynth', () => {
 });
 ```
 
-- [ ] **步骤 2：运行测试验证失败**
+- [x] **步骤 2：运行测试验证失败**
 
 运行：`npm test -- src/types/models.test.ts`
 预期：FAIL，`normalizeSynth is not a function` 或类型错误。
 
-- [ ] **步骤 3：修改 `src/types/models.ts`**
+- [x] **步骤 3：修改 `src/types/models.ts`**
 
 在文件顶部类型区加入：
 
@@ -204,12 +204,12 @@ export function normalizeSynth(raw: unknown): SynthSettings {
 }
 ```
 
-- [ ] **步骤 4：运行测试验证通过**
+- [x] **步骤 4：运行测试验证通过**
 
 运行：`npm test -- src/types/models.test.ts`
 预期：PASS。
 
-- [ ] **步骤 5：Commit**
+- [x] **步骤 5：Commit**
 
 ```bash
 git add src/types/models.ts src/types/models.test.ts
@@ -225,7 +225,7 @@ git commit -m "feat: 扩展应用偏好与调度参数模型"
 - 修改：`src/store/poolDeps.ts:8-30`
 - 测试：`src/lib/pool.test.ts`
 
-- [ ] **步骤 1：编写失败的测试**
+- [x] **步骤 1：编写失败的测试**
 
 将 `src/lib/pool.test.ts` 顶部导入改为：
 
@@ -279,12 +279,12 @@ it('自定义失败阈值 2 次即进入冷却，冷却时长使用策略值', a
 });
 ```
 
-- [ ] **步骤 2：运行测试验证失败**
+- [x] **步骤 2：运行测试验证失败**
 
 运行：`npm test -- src/lib/pool.test.ts`
 预期：FAIL，`DEFAULT_POLICY` 不存在或 `getPolicy` 类型缺失。
 
-- [ ] **步骤 3：修改 `src/lib/pool.ts`**
+- [x] **步骤 3：修改 `src/lib/pool.ts`**
 
 在常量区替换：
 
@@ -317,7 +317,7 @@ export const DEFAULT_POLICY: PoolPolicy = { failThreshold: 3, cooldownMinutes: 1
       : node.cooldownUntil;
 ```
 
-- [ ] **步骤 4：修改 `src/store/poolDeps.ts`**
+- [x] **步骤 4：修改 `src/store/poolDeps.ts`**
 
 在 `makePoolDeps` 返回对象中加入：
 
@@ -328,12 +328,12 @@ export const DEFAULT_POLICY: PoolPolicy = { failThreshold: 3, cooldownMinutes: 1
     },
 ```
 
-- [ ] **步骤 5：运行测试验证通过**
+- [x] **步骤 5：运行测试验证通过**
 
 运行：`npm test -- src/lib/pool.test.ts`
 预期：PASS，既有 AUTO/GROUP/MANUAL 用例全部通过。
 
-- [ ] **步骤 6：Commit**
+- [x] **步骤 6：Commit**
 
 ```bash
 git add src/lib/pool.ts src/lib/pool.test.ts src/store/poolDeps.ts
@@ -348,7 +348,7 @@ git commit -m "feat: 支持可配置的失败阈值与冷却时长"
 - 创建：`src/lib/sentences.ts`
 - 测试：`src/lib/sentences.test.ts`
 
-- [ ] **步骤 1：编写失败的测试**
+- [x] **步骤 1：编写失败的测试**
 
 创建 `src/lib/sentences.test.ts`：
 
@@ -391,12 +391,12 @@ describe('sentenceIndexAt', () => {
 });
 ```
 
-- [ ] **步骤 2：运行测试验证失败**
+- [x] **步骤 2：运行测试验证失败**
 
 运行：`npm test -- src/lib/sentences.test.ts`
 预期：FAIL，模块不存在。
 
-- [ ] **步骤 3：创建 `src/lib/sentences.ts`**
+- [x] **步骤 3：创建 `src/lib/sentences.ts`**
 
 ```ts
 export interface SentenceRange {
@@ -442,12 +442,12 @@ export function sentenceIndexAt(ratio: number, sentences: SentenceRange[]): numb
 }
 ```
 
-- [ ] **步骤 4：运行测试验证通过**
+- [x] **步骤 4：运行测试验证通过**
 
 运行：`npm test -- src/lib/sentences.test.ts`
 预期：PASS。
 
-- [ ] **步骤 5：Commit**
+- [x] **步骤 5：Commit**
 
 ```bash
 git add src/lib/sentences.ts src/lib/sentences.test.ts
@@ -462,7 +462,7 @@ git commit -m "feat: 添加句级切分与播放比例定位"
 - 创建：`src/lib/estimate.ts`
 - 测试：`src/lib/estimate.test.ts`
 
-- [ ] **步骤 1：编写失败的测试**
+- [x] **步骤 1：编写失败的测试**
 
 创建 `src/lib/estimate.test.ts`：
 
@@ -492,12 +492,12 @@ it('长文阈值与 Android 一致', () => {
 });
 ```
 
-- [ ] **步骤 2：运行测试验证失败**
+- [x] **步骤 2：运行测试验证失败**
 
 运行：`npm test -- src/lib/estimate.test.ts`
 预期：FAIL，模块不存在。
 
-- [ ] **步骤 3：创建 `src/lib/estimate.ts`**
+- [x] **步骤 3：创建 `src/lib/estimate.ts`**
 
 ```ts
 export const CHARS_PER_SECOND = 4.2;
@@ -517,12 +517,12 @@ export function fmtReadingDuration(seconds: number): string {
 }
 ```
 
-- [ ] **步骤 4：运行测试验证通过**
+- [x] **步骤 4：运行测试验证通过**
 
 运行：`npm test -- src/lib/estimate.test.ts`
 预期：PASS。
 
-- [ ] **步骤 5：Commit**
+- [x] **步骤 5：Commit**
 
 ```bash
 git add src/lib/estimate.ts src/lib/estimate.test.ts
@@ -537,7 +537,7 @@ git commit -m "feat: 添加朗读字数与时长估算"
 - 创建：`src/lib/snapshot.ts`
 - 测试：`src/lib/snapshot.test.ts`
 
-- [ ] **步骤 1：编写失败的测试**
+- [x] **步骤 1：编写失败的测试**
 
 创建 `src/lib/snapshot.test.ts`：
 
@@ -587,12 +587,12 @@ describe('parseSnapshotJson', () => {
 });
 ```
 
-- [ ] **步骤 2：运行测试验证失败**
+- [x] **步骤 2：运行测试验证失败**
 
 运行：`npm test -- src/lib/snapshot.test.ts`
 预期：FAIL，模块不存在。
 
-- [ ] **步骤 3：创建 `src/lib/snapshot.ts`**
+- [x] **步骤 3：创建 `src/lib/snapshot.ts`**
 
 ```ts
 import type { PlaySource } from '../types/models';
@@ -648,12 +648,12 @@ export function parseSnapshotJson(raw: string | null): PlaybackSnapshot | null {
 }
 ```
 
-- [ ] **步骤 4：运行测试验证通过**
+- [x] **步骤 4：运行测试验证通过**
 
 运行：`npm test -- src/lib/snapshot.test.ts`
 预期：PASS。
 
-- [ ] **步骤 5：Commit**
+- [x] **步骤 5：Commit**
 
 ```bash
 git add src/lib/snapshot.ts src/lib/snapshot.test.ts
@@ -667,7 +667,7 @@ git commit -m "feat: 添加播放快照模型与校验"
 **文件：**
 - 创建：`src/store/resumeStore.ts`
 
-- [ ] **步骤 1：创建 `src/store/resumeStore.ts`**
+- [x] **步骤 1：创建 `src/store/resumeStore.ts`**
 
 ```ts
 import { create } from 'zustand';
@@ -713,12 +713,12 @@ export const useResumeStore = create<ResumeState>((set) => ({
 
 串行写入避免章节切换时旧快照覆盖新快照。
 
-- [ ] **步骤 2：类型检查**
+- [x] **步骤 2：类型检查**
 
 运行：`npx tsc --noEmit`
 预期：PASS。
 
-- [ ] **步骤 3：Commit**
+- [x] **步骤 3：Commit**
 
 ```bash
 git add src/store/resumeStore.ts
@@ -732,7 +732,7 @@ git commit -m "feat: 添加续听快照存储"
 **文件：**
 - 修改：`src/store/playerStore.ts`
 
-- [ ] **步骤 1：修改类型与状态**
+- [x] **步骤 1：修改类型与状态**
 
 将文件顶部的 `PlaySource` 定义替换为从模型导入并重新导出：
 
@@ -772,7 +772,7 @@ export type SnapshotSink = (data: SnapshotData) => void;
   start(text: string, fromSeg?: number): Promise<void>;
 ```
 
-- [ ] **步骤 2：加入模块级状态与辅助函数**
+- [x] **步骤 2：加入模块级状态与辅助函数**
 
 在 `let prefetch` 下方加入：
 
@@ -813,7 +813,7 @@ function emitSnapshot(finished = false, segIndex = usePlayerStore.getState().ind
 }
 ```
 
-- [ ] **步骤 3：在 `pump` 中写入快照与播完回调**
+- [x] **步骤 3：在 `pump` 中写入快照与播完回调**
 
 在 `if (s.index >= s.segs.length) {` 内、`const src = ...` 之前加入：
 
@@ -827,7 +827,7 @@ function emitSnapshot(finished = false, segIndex = usePlayerStore.getState().ind
     emitSnapshot(false);
 ```
 
-- [ ] **步骤 4：扩展 store 初始状态与动作**
+- [x] **步骤 4：扩展 store 初始状态与动作**
 
 在 `usePlayerStore` 初始状态中加入：
 
@@ -858,7 +858,7 @@ function emitSnapshot(finished = false, segIndex = usePlayerStore.getState().ind
   },
 ```
 
-- [ ] **步骤 5：重写 `start` 支持从指定段开始并启动默认定时**
+- [x] **步骤 5：重写 `start` 支持从指定段开始并启动默认定时**
 
 将 `start` 替换为：
 
@@ -895,7 +895,7 @@ function emitSnapshot(finished = false, segIndex = usePlayerStore.getState().ind
     scheduleSleep(endsAt);
 ```
 
-- [ ] **步骤 6：暂停与停止写入快照**
+- [x] **步骤 6：暂停与停止写入快照**
 
 将 `pause()` 改为：
 
@@ -923,12 +923,12 @@ function emitSnapshot(finished = false, segIndex = usePlayerStore.getState().ind
   },
 ```
 
-- [ ] **步骤 7：类型检查**
+- [x] **步骤 7：类型检查**
 
 运行：`npx tsc --noEmit`
 预期：PASS。若提示 `PlaySource` 重复定义，确认已删除旧定义、仅保留 import + export。
 
-- [ ] **步骤 8：Commit**
+- [x] **步骤 8：Commit**
 
 ```bash
 git add src/store/playerStore.ts
@@ -944,7 +944,7 @@ git commit -m "feat: 播放内核支持睡眠定时、快照与断点起播"
 - 创建：`src/components/player/SentenceText.tsx`
 - 修改：`src/components/player/PlayerDock.tsx`
 
-- [ ] **步骤 1：创建倒计时 Hook**
+- [x] **步骤 1：创建倒计时 Hook**
 
 创建 `src/hooks/useSleepCountdown.ts`：
 
@@ -967,7 +967,7 @@ export function useSleepCountdown(endsAt: number | null): string | null {
 }
 ```
 
-- [ ] **步骤 2：创建句级高亮组件**
+- [x] **步骤 2：创建句级高亮组件**
 
 创建 `src/components/player/SentenceText.tsx`：
 
@@ -1015,7 +1015,7 @@ export function SentenceText({ text, progress, className }: Props) {
 }
 ```
 
-- [ ] **步骤 3：重写 `PlayerDock.tsx`**
+- [x] **步骤 3：重写 `PlayerDock.tsx`**
 
 将文件替换为：
 
@@ -1252,12 +1252,12 @@ export function PlayerDock() {
 }
 ```
 
-- [ ] **步骤 4：类型检查**
+- [x] **步骤 4：类型检查**
 
 运行：`npx tsc --noEmit`
 预期：PASS。
 
-- [ ] **步骤 5：Commit**
+- [x] **步骤 5：Commit**
 
 ```bash
 git add src/hooks/useSleepCountdown.ts src/components/player/SentenceText.tsx src/components/player/PlayerDock.tsx
@@ -1271,7 +1271,7 @@ git commit -m "feat: 播放条支持句级高亮、睡眠定时与前后十秒"
 **文件：**
 - 修改：`src/pages/ReadPage.tsx`
 
-- [ ] **步骤 1：重写 `ReadPage.tsx`**
+- [x] **步骤 1：重写 `ReadPage.tsx`**
 
 将文件替换为：
 
@@ -1443,12 +1443,12 @@ export function ReadPage() {
 }
 ```
 
-- [ ] **步骤 2：类型检查**
+- [x] **步骤 2：类型检查**
 
 运行：`npx tsc --noEmit`
 预期：PASS。
 
-- [ ] **步骤 3：Commit**
+- [x] **步骤 3：Commit**
 
 ```bash
 git add src/pages/ReadPage.tsx
@@ -1463,7 +1463,7 @@ git commit -m "feat: 朗读页显示字数时长并支持续听"
 - 修改：`src/pages/BooksPage.tsx:69-147`
 - 修改：`src/pages/BookDetailPage.tsx:31-35`
 
-- [ ] **步骤 1：修改 `BooksPage.tsx`**
+- [x] **步骤 1：修改 `BooksPage.tsx`**
 
 在 import 区加入：
 
@@ -1526,7 +1526,7 @@ import { useSettingsStore } from '@/store/settingsStore';
       )}
 ```
 
-- [ ] **步骤 2：修改 `BookDetailPage.tsx` 的订阅**
+- [x] **步骤 2：修改 `BookDetailPage.tsx` 的订阅**
 
 将：
 
@@ -1546,12 +1546,12 @@ import { useSettingsStore } from '@/store/settingsStore';
   const playing = status !== 'idle';
 ```
 
-- [ ] **步骤 3：类型检查**
+- [x] **步骤 3：类型检查**
 
 运行：`npx tsc --noEmit`
 预期：PASS。
 
-- [ ] **步骤 4：Commit**
+- [x] **步骤 4：Commit**
 
 ```bash
 git add src/pages/BooksPage.tsx src/pages/BookDetailPage.tsx
@@ -1566,7 +1566,7 @@ git commit -m "feat: 书架与详情页支持续听入口"
 - 创建：`src/lib/configTransfer.ts`
 - 测试：`src/lib/configTransfer.test.ts`
 
-- [ ] **步骤 1：编写失败的测试**
+- [x] **步骤 1：编写失败的测试**
 
 创建 `src/lib/configTransfer.test.ts`：
 
@@ -1635,12 +1635,12 @@ describe('mergeImportedNode', () => {
 });
 ```
 
-- [ ] **步骤 2：运行测试验证失败**
+- [x] **步骤 2：运行测试验证失败**
 
 运行：`npm test -- src/lib/configTransfer.test.ts`
 预期：FAIL，模块不存在。
 
-- [ ] **步骤 3：创建 `src/lib/configTransfer.ts`**
+- [x] **步骤 3：创建 `src/lib/configTransfer.ts`**
 
 ```ts
 import {
@@ -1774,12 +1774,12 @@ export function mergeImportedNode(existing: TtsNode | undefined, n: ConfigNode):
 }
 ```
 
-- [ ] **步骤 4：运行测试验证通过**
+- [x] **步骤 4：运行测试验证通过**
 
 运行：`npm test -- src/lib/configTransfer.test.ts`
 预期：PASS。
 
-- [ ] **步骤 5：Commit**
+- [x] **步骤 5：Commit**
 
 ```bash
 git add src/lib/configTransfer.ts src/lib/configTransfer.test.ts
@@ -1794,7 +1794,7 @@ git commit -m "feat: 添加配置导入导出与节点合并逻辑"
 - 创建：`src/components/settings/DataSection.tsx`
 - 修改：`src/pages/SettingsPage.tsx`
 
-- [ ] **步骤 1：创建 `DataSection.tsx`**
+- [x] **步骤 1：创建 `DataSection.tsx`**
 
 ```tsx
 import { useState } from 'react';
@@ -1900,7 +1900,7 @@ export function DataSection() {
 }
 ```
 
-- [ ] **步骤 2：更新 `SettingsPage.tsx` 的分区**
+- [x] **步骤 2：更新 `SettingsPage.tsx` 的分区**
 
 在 import 区加入：
 
@@ -2032,12 +2032,12 @@ const SECTIONS: [SectionKey, string][] = [
           {active === 'data' && <DataSection />}
 ```
 
-- [ ] **步骤 3：类型检查**
+- [x] **步骤 3：类型检查**
 
 运行：`npx tsc --noEmit`
 预期：PASS。
 
-- [ ] **步骤 4：Commit**
+- [x] **步骤 4：Commit**
 
 ```bash
 git add src/components/settings/DataSection.tsx src/pages/SettingsPage.tsx
@@ -2054,7 +2054,7 @@ git commit -m "feat: 设置页增加调度参数与配置导入导出"
 - 修改：`src/main.tsx`
 - 修改：`src/lib/mediaSession.ts`
 
-- [ ] **步骤 1：主题镜像**
+- [x] **步骤 1：主题镜像**
 
 在 `src/lib/theme.ts` 末尾加入：
 
@@ -2068,7 +2068,7 @@ export function mirrorTheme(theme: ThemeMode): void {
 }
 ```
 
-- [ ] **步骤 2：更新 `settingsStore.ts`**
+- [x] **步骤 2：更新 `settingsStore.ts`**
 
 将 import 改为：
 
@@ -2112,7 +2112,7 @@ import { usePlayerStore } from './playerStore';
   },
 ```
 
-- [ ] **步骤 3：更新 `main.tsx`**
+- [x] **步骤 3：更新 `main.tsx`**
 
 在 import 区加入：
 
@@ -2163,7 +2163,7 @@ import type { PlaybackSnapshot } from './lib/snapshot';
   }
 ```
 
-- [ ] **步骤 4：优化 `mediaSession.ts`**
+- [x] **步骤 4：优化 `mediaSession.ts`**
 
 将 `store.subscribe(...)` 整段替换为：
 
@@ -2187,12 +2187,12 @@ import type { PlaybackSnapshot } from './lib/snapshot';
   });
 ```
 
-- [ ] **步骤 5：类型检查**
+- [x] **步骤 5：类型检查**
 
 运行：`npx tsc --noEmit`
 预期：PASS。
 
-- [ ] **步骤 6：Commit**
+- [x] **步骤 6：Commit**
 
 ```bash
 git add src/lib/theme.ts src/lib/mediaSession.ts src/store/settingsStore.ts src/main.tsx
@@ -2210,7 +2210,7 @@ git commit -m "feat: 启动恢复快照、自动探测与主题镜像"
 - 修改：`src-tauri/capabilities/default.json`
 - 修改：`src-tauri/tauri.conf.json`
 
-- [ ] **步骤 1：安装前端依赖**
+- [x] **步骤 1：安装前端依赖**
 
 运行：
 
@@ -2220,7 +2220,7 @@ npm install @tauri-apps/plugin-dialog@^2 @tauri-apps/plugin-fs@^2
 
 预期：`package.json` 出现两个依赖。
 
-- [ ] **步骤 2：更新 Cargo 依赖**
+- [x] **步骤 2：更新 Cargo 依赖**
 
 在 `src-tauri/Cargo.toml` 的 `[dependencies]` 中加入：
 
@@ -2229,7 +2229,7 @@ tauri-plugin-dialog = "2"
 tauri-plugin-fs = "2"
 ```
 
-- [ ] **步骤 3：注册插件**
+- [x] **步骤 3：注册插件**
 
 在 `src-tauri/src/lib.rs` 的插件链中加入：
 
@@ -2240,7 +2240,7 @@ tauri-plugin-fs = "2"
 
 位置放在 `tauri_plugin_opener::init()` 之后即可。
 
-- [ ] **步骤 4：更新权限**
+- [x] **步骤 4：更新权限**
 
 将 `src-tauri/capabilities/default.json` 的 `permissions` 替换为：
 
@@ -2271,7 +2271,7 @@ tauri-plugin-fs = "2"
 
 执行后检查生成的 `src-tauri/gen/schemas/desktop-schema.json`，确认 `dialog:allow-open` / `dialog:allow-save`、`fs:allow-read-text-file` / `fs:allow-write-text-file` 均存在。若本机插件版本生成的标识符不同，以 schema 为准修正。
 
-- [ ] **步骤 5：更新 Tauri 配置**
+- [x] **步骤 5：更新 Tauri 配置**
 
 将 `src-tauri/tauri.conf.json` 的 `productName` 改为 `TTS Aggregator`，窗口配置改为：
 
@@ -2302,12 +2302,12 @@ tauri-plugin-fs = "2"
 
 保留 `identifier` 不变。
 
-- [ ] **步骤 6：验证 Rust 编译**
+- [x] **步骤 6：验证 Rust 编译**
 
 运行（在 `src-tauri` 目录）：`cargo check`
 预期：编译成功。若权限标识符错误，按步骤 4 的说明用生成的 schema 修正。
 
-- [ ] **步骤 7：Commit**
+- [x] **步骤 7：Commit**
 
 ```bash
 git add package.json package-lock.json src-tauri/Cargo.toml src-tauri/src/lib.rs src-tauri/capabilities/default.json src-tauri/tauri.conf.json
@@ -2322,7 +2322,7 @@ git commit -m "chore: 接入文件对话框插件并收紧 CSP"
 - 修改：`src/components/ui/*.tsx`（14 个文件）
 - 修改：`package.json`、`package-lock.json`
 
-- [ ] **步骤 1：批量替换导入**
+- [x] **步骤 1：批量替换导入**
 
 使用 Node 脚本（跨平台）：
 
@@ -2330,12 +2330,12 @@ git commit -m "chore: 接入文件对话框插件并收紧 CSP"
 node -e "const fs=require('fs');const d='src/components/ui';for(const f of fs.readdirSync(d)){if(!f.endsWith('.tsx'))continue;const p=d+'/'+f;const s=fs.readFileSync(p,'utf8');const n=s.replace(/from \"cn\"/g,'from \"@/lib/utils\"');if(n!==s)fs.writeFileSync(p,n);}"
 ```
 
-- [ ] **步骤 2：确认没有残留**
+- [x] **步骤 2：确认没有残留**
 
 运行：`git grep -n "from \"cn\"" -- src`
 预期：无输出。
 
-- [ ] **步骤 3：移除依赖**
+- [x] **步骤 3：移除依赖**
 
 运行：
 
@@ -2343,12 +2343,12 @@ node -e "const fs=require('fs');const d='src/components/ui';for(const f of fs.re
 npm uninstall cn
 ```
 
-- [ ] **步骤 4：构建验证**
+- [x] **步骤 4：构建验证**
 
 运行：`npm run build`
 预期：PASS。
 
-- [ ] **步骤 5：Commit**
+- [x] **步骤 5：Commit**
 
 ```bash
 git add src/components/ui package.json package-lock.json
@@ -2362,7 +2362,7 @@ git commit -m "refactor: 统一 cn 实现到本地工具函数"
 **文件：**
 - 修改：`README.md`
 
-- [ ] **步骤 1：更新 README 功能列表**
+- [x] **步骤 1：更新 README 功能列表**
 
 在「功能」列表的朗读条目后补充：
 
@@ -2375,22 +2375,22 @@ git commit -m "refactor: 统一 cn 实现到本地工具函数"
 
 在「技术栈」或「测试」小节补充 dialog/fs 插件说明。
 
-- [ ] **步骤 2：运行全量测试**
+- [x] **步骤 2：运行全量测试**
 
 运行：`npm test`
 预期：全部 PASS，包含新增的 4 个测试文件与更新的模型/调度测试。
 
-- [ ] **步骤 3：运行生产构建**
+- [x] **步骤 3：运行生产构建**
 
 运行：`npm run build`
 预期：PASS。
 
-- [ ] **步骤 4：运行 Rust 检查**
+- [x] **步骤 4：运行 Rust 检查**
 
 运行（在 `src-tauri` 目录）：`cargo check`
 预期：PASS。
 
-- [ ] **步骤 5：手动验收**
+- [x] **步骤 5：手动验收**
 
 按规格第 8 节逐项验证：
 
@@ -2406,7 +2406,7 @@ git commit -m "refactor: 统一 cn 实现到本地工具函数"
 10. 生产构建 Blob 音频可播放（CSP 正确）。
 11. 文件对话框导入/导出可用。
 
-- [ ] **步骤 6：Commit**
+- [x] **步骤 6：Commit**
 
 ```bash
 git add README.md

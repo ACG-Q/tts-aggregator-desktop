@@ -26,6 +26,10 @@ npm run tauri build   # 产出安装包
 - **导入**：FOFA（CSV/JSON 文件 + API 在线搜索）、ZoomEye（JSON 文件 + API 在线搜索），TTS 关键词相关性排序、逐条勾选入库、来源溯源
 - **局域网分享**：内嵌只读 HTTP 服务 `GET /nodes.json`，token 校验（query 或 X-Token 头）、可选仅本机监听，供同网段设备拉取节点配置
 - **书架（小说听书）**：导入本地 TXT，内置多级目录解析（第X卷/篇/部 + 第X章/回/节/集 + 「1、」「1.」编号行；中文/阿拉伯/罗马数字），按卷分组章节树点播、断点续听（书/章/段三级进度）、章末自动连播、全书播完提示、书级倍速覆盖
+- **朗读增强**：句级高亮随播放推进并自动滚动，睡眠定时（0/15/30/60 分钟），±10 秒跳转，实时字数与预计时长，超长文本分段提示
+- **续听**：纯文本与书籍均保留上次位置，启动后在朗读页/书架提供「继续上次」入口；关闭自动续听后入口隐藏
+- **配置备份**：通过原生文件对话框导出/导入 JSON 配置（节点 + 音色 + 偏好），不含 API Key 与分享 Token；导入时按 URL 去重并保留已有密钥
+- **调度参数**：失败阈值（2/3/5/10 次）与冷却时长（1/5/10/30/60 分钟）可在设置页调整，可选启动时自动测试全部节点
 
 ## 与安卓版差异
 
@@ -58,12 +62,16 @@ src/
     db.ts           SQLite 仓库层（nodes/logs/settings/books/chapters）
     toc.ts          书籍目录解析
     format.ts       时间/进度格式化
+    sentences.ts    句级切分与播放比例定位
+    estimate.ts     字数与预计时长估算
+    snapshot.ts     续听快照校验
+    configTransfer.ts  配置导入导出与节点合并
     audition.ts     试听互斥播放
     importers/      FOFA/ZoomEye 文件解析 + API 搜索
   store/        # zustand 状态（nodes/voices/logs/player/settings/bookPlay）
   pages/        # 六个页面 + 导入面板（书架/朗读/节点/音色/日志/设置）
   types/        # 数据模型（与安卓同构，snake_case 枚举序号）
 src-tauri/
-  src/lib.rs   # SQLite/HTTP 插件 + 局域网分享 HTTP 服务
+  src/lib.rs   # SQLite/HTTP/dialog/fs 插件 + 局域网分享 HTTP 服务
 docs/superpowers/   # 设计规格与实现计划
 ```
