@@ -18,3 +18,11 @@ export function watchSystemTheme(cb: (dark: boolean) => void): () => void {
   mq.addEventListener('change', handler);
   return () => mq.removeEventListener('change', handler);
 }
+
+export function mirrorTheme(theme: ThemeMode): void {
+  try {
+    localStorage.setItem('app_prefs', JSON.stringify({ theme }));
+  } catch {
+    /* 隐私模式或存储禁用时忽略 */
+  }
+}

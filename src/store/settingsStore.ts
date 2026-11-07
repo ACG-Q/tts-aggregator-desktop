@@ -1,11 +1,15 @@
 import { create } from 'zustand';
 import { invoke } from '@tauri-apps/api/core';
 import {
-  DEFAULT_APP_PREFS, DEFAULT_POOL, DEFAULT_SYNTH, defaultShare, normalizeAppPrefs,
+  DEFAULT_APP_PREFS, DEFAULT_POOL, DEFAULT_SYNTH, defaultShare,
+  normalizeAppPrefs, normalizeSynth,
   type AppPrefs, type PoolConfig, type ShareConfig, type SynthSettings,
 } from '../types/models';
+import { mirrorTheme } from '../lib/theme';
 import { deps } from './deps';
 import { notifyShare } from './shareSync';
+import { usePlayerStore } from './playerStore';
+import { useResumeStore } from './resumeStore';
 
 interface SettingsState {
   synth: SynthSettings;
@@ -29,12 +33,13 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   async load() {
     const s = deps().settings;
     set({
-      synth: await s.getJson('synth_settings', DEFAULT_SYNTH),
+      synth: normalizeSynth(await s.getJson('synth_settings', DEFAULT_SYNTH)),
       pool: await s.getJson('pool_config', DEFAULT_POOL),
       share: await s.getJson('share_config', defaultShare()),
       appPrefs: normalizeAppPrefs(await s.getJson<Partial<AppPrefs>>('app_prefs', {})),
       loaded: true,
     });
+    mirrorTheme(get().appPrefs.theme);
   },
   async saveSynth(synth) {
     set({ synth });
@@ -58,6 +63,9 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   },
   async saveAppPrefs(appPrefs) {
     set({ appPrefs });
+    mirrorTheme(appPrefs.theme);
+    usePlayerStore.getState().setDefaultSleepMinutes(appPrefs.sleepMinutes);
     await deps().settings.setJson('app_prefs', appPrefs);
+    if (!appPrefs.resumeLast) await useResumeStore.getState().clear();
   },
 }));

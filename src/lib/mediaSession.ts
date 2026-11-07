@@ -13,7 +13,11 @@ export function bindMediaSession(store: PlayerApi): void {
   } catch {
     /* 部分平台不支持的 action 忽略 */
   }
+  let last = '';
   store.subscribe((s) => {
+    const key = `${s.status}|${s.index}|${s.segs.length}`;
+    if (key === last) return;
+    last = key;
     ms.playbackState = s.status === 'running' ? 'playing' : s.status === 'paused' ? 'paused' : 'none';
     if (s.segs.length > 0) {
       try {
