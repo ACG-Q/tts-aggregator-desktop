@@ -11,3 +11,6 @@ export function resolveCollapsed(
   if (manual !== null) return manual;
   return windowWidth < threshold;
 }
+
+/** 窄于此宽度时侧栏强制显示为图标栏（优先于手动展开），但仍不算移动端。 */
+export const SIDEBAR_RAIL_THRESHOLD = 940;

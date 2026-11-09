@@ -1,7 +1,6 @@
-import { useMemo, useRef } from 'react';
-import { History, Play, Upload, X } from 'lucide-react';
+import { useMemo, useRef, useState } from 'react';
+import { ChevronDown, History, Play, Upload, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
 import { Textarea } from '@/components/ui/textarea';
@@ -16,8 +15,11 @@ import { useResumeStore } from '@/store/resumeStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import { useVoicesStore } from '@/store/voicesStore';
 
+const card = 'rounded-[13px] border border-line bg-card';
+
 export function ReadPage() {
   const fileRef = useRef<HTMLInputElement>(null);
+  const [listOpen, setListOpen] = useState(true);
   const text = usePlayerStore((s) => s.text);
   const status = usePlayerStore((s) => s.status);
   const segs = usePlayerStore((s) => s.segs);
@@ -47,10 +49,11 @@ export function ReadPage() {
   const canResume = idle && appPrefs.resumeLast && textSnapshot !== null;
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6">
+    <div className="mx-auto w-full max-w-[820px]">
       <PageHeader
-        title="朗读"
-        description="粘贴或导入文本，选择音色后开始朗读；支持音量/倍速与系统媒体键。"
+        eyebrow="Reading · 朗读"
+        title="把文字，交给声音"
+        description="粘贴或导入文本，选一个舒服的嗓音，然后让这一页慢慢读完。"
         actions={
           <>
             <Button variant="outline" onClick={() => fileRef.current?.click()}>
@@ -79,41 +82,61 @@ export function ReadPage() {
         }}
       />
 
-      {canResume && textSnapshot && (
-        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-primary/30 bg-primary/5 px-4 py-3">
-          <History className="h-4 w-4 text-primary" />
-          <div className="min-w-0 flex-1 text-sm">
-            <span className="font-medium">继续上次朗读</span>
-            <span className="ml-2 text-muted-foreground">
-              第 {Math.min(textSnapshot.segIndex + 1, Math.max(resumeSegCount, 1))} 段 · {fmtTimeFull(textSnapshot.updatedAt)}
-            </span>
+      <div className="space-y-4">
+        {canResume && textSnapshot && (
+          <div className="flex flex-wrap items-center gap-3 rounded-[11px] border border-primary/25 bg-primary/8 px-4 py-3">
+            <History className="h-4 w-4 shrink-0 text-primary" />
+            <div className="min-w-0 flex-1 text-[13px]">
+              <span className="font-semibold">继续上次朗读</span>
+              <span className="ml-2 text-muted-foreground">
+                第 {Math.min(textSnapshot.segIndex + 1, Math.max(resumeSegCount, 1))} 段 · {fmtTimeFull(textSnapshot.updatedAt)}
+              </span>
+            </div>
+            <Button size="sm" onClick={() => void start(textSnapshot.text, textSnapshot.segIndex)}>
+              继续
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => void clearSnapshot()} title="忽略" aria-label="忽略">
+              <X className="h-4 w-4" />
+            </Button>
           </div>
-          <Button size="sm" onClick={() => void start(textSnapshot.text, textSnapshot.segIndex)}>
-            继续
-          </Button>
-          <Button size="sm" variant="ghost" onClick={() => void clearSnapshot()} title="忽略">
-            <X className="h-4 w-4" />
-          </Button>
+        )}
+
+        <div className="paper-surface overflow-hidden rounded-[14px] border border-line">
+          <div className="flex items-center justify-between gap-3 border-b border-line px-5 py-2.5">
+            <div className="eyebrow">朗读稿</div>
+            <div className="flex items-center gap-2 text-[10.5px] text-faint">
+              <span className="num">{chars} 字</span>
+              <span aria-hidden="true">·</span>
+              <span>约 {fmtReadingDuration(seconds)}</span>
+              {segments > 0 && (
+                <>
+                  <span aria-hidden="true">·</span>
+                  <span className="num">{segments} 段</span>
+                </>
+              )}
+            </div>
+          </div>
+          <Textarea
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            placeholder="粘贴或输入要朗读的文本，或导入 TXT…"
+            className="min-h-[300px] resize-none rounded-none border-0 bg-transparent px-6 py-6 text-[16.5px] leading-[2.02] tracking-[0.012em] text-paper-foreground shadow-none placeholder:text-faint focus-visible:ring-0 dark:bg-transparent"
+          />
+          <div className="flex items-center justify-between gap-3 border-t border-line px-5 py-2.5 text-[10.5px] text-faint">
+            <span>支持 TXT · 自动按段落切分</span>
+            <span>本地保存</span>
+          </div>
         </div>
-      )}
 
-      <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-        <Textarea
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder="粘贴或输入要朗读的文本，或导入 TXT…"
-          className="min-h-[260px] resize-none border-0 bg-transparent p-5 text-[15px] leading-relaxed shadow-none focus-visible:ring-0 dark:bg-transparent"
-        />
-
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-3 border-t border-border bg-muted/40 px-5 py-3">
-          <div className="flex items-center gap-2">
-            <Label className="shrink-0 text-xs text-muted-foreground">音色</Label>
+        <div className={`${card} grid gap-5 px-5 py-4 sm:grid-cols-3`}>
+          <div className="min-w-0">
+            <div className="eyebrow mb-2">音色</div>
             <Select
               value={synth.voice || 'node-default'}
               onOpenChange={(open) => { if (open) void load(); }}
               onValueChange={(v) => void saveSynth({ ...synth, voice: v === 'node-default' ? '' : v })}
             >
-              <SelectTrigger className="w-52"><SelectValue placeholder="节点默认音色" /></SelectTrigger>
+              <SelectTrigger className="h-9 w-full"><SelectValue placeholder="节点默认音色" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="node-default">节点默认音色</SelectItem>
                 {voices.map((v) => (
@@ -122,52 +145,70 @@ export function ReadPage() {
               </SelectContent>
             </Select>
           </div>
-          <div className="flex items-center gap-2">
-            <Label className="shrink-0 text-xs text-muted-foreground">语速 {synth.rate}</Label>
-            <Slider value={[synth.rate]} min={-100} max={100} step={1} className="w-24"
+          <div className="min-w-0">
+            <div className="mb-2.5 flex items-baseline justify-between">
+              <span className="eyebrow">语速</span>
+              <b className="text-[11px] font-semibold num text-muted-foreground">{synth.rate > 0 ? `+${synth.rate}` : synth.rate}</b>
+            </div>
+            <Slider value={[synth.rate]} min={-100} max={100} step={1}
               onValueChange={([v]) => void saveSynth({ ...synth, rate: v })} />
           </div>
-          <div className="flex items-center gap-2">
-            <Label className="shrink-0 text-xs text-muted-foreground">音调 {synth.pitch}</Label>
-            <Slider value={[synth.pitch]} min={-100} max={100} step={1} className="w-24"
+          <div className="min-w-0">
+            <div className="mb-2.5 flex items-baseline justify-between">
+              <span className="eyebrow">音调</span>
+              <b className="text-[11px] font-semibold num text-muted-foreground">{synth.pitch > 0 ? `+${synth.pitch}` : synth.pitch}</b>
+            </div>
+            <Slider value={[synth.pitch]} min={-100} max={100} step={1}
               onValueChange={([v]) => void saveSynth({ ...synth, pitch: v })} />
           </div>
-          <div className="ml-auto text-xs text-muted-foreground">
-            {chars} 字 · 约 {fmtReadingDuration(seconds)}
-            {segments > 0 && ` · ${segments} 段`}
-          </div>
         </div>
+
+        {chars > LONG_TEXT_HINT && (
+          <div className="flex items-start gap-2.5 rounded-[11px] border border-line bg-surface-2 px-4 py-3 text-[12px] text-muted-foreground">
+            <span className="mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded-full border border-line-strong text-[9px] font-bold text-faint">!</span>
+            <span>文本较长，将分 {splitForReading(text).length} 段合成；建议导入书库以获得更好的续听体验。</span>
+          </div>
+        )}
+
+        {error && (
+          <p className="rounded-[10px] border border-destructive/30 bg-destructive/8 px-4 py-3 text-[12.5px] text-destructive">
+            {error}
+          </p>
+        )}
+
+        {segs.length > 0 && (
+          <div className={`${card} overflow-hidden`}>
+            <button
+              type="button"
+              onClick={() => setListOpen((v) => !v)}
+              aria-expanded={listOpen}
+              className="flex w-full items-center gap-2 px-5 py-3 text-left text-[12.5px] font-semibold transition-colors hover:bg-surface-2"
+            >
+              <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${listOpen ? '' : '-rotate-90'}`} />
+              段落 · 点击跳转
+              <span className="ml-auto text-[11px] font-normal text-faint num">{segs.length} 段</span>
+            </button>
+            {listOpen && (
+              <div className="max-h-96 divide-y divide-line overflow-y-auto border-t border-line">
+                {segs.map((seg, i) => (
+                  <button
+                    key={i}
+                    onClick={() => jumpTo(i)}
+                    className={`flex w-full items-start gap-3 px-5 py-3 text-left text-[12.5px] transition-colors hover:bg-surface-2 ${
+                      i === index ? 'bg-primary/8' : ''
+                    }`}
+                  >
+                    <span className={`shrink-0 text-[10.5px] num ${i === index ? 'font-semibold text-primary' : 'text-faint'}`}>
+                      {String(i + 1).padStart(2, '0')}
+                    </span>
+                    <span className={i === index ? 'text-foreground' : 'text-muted-foreground'}>{seg.text}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
-
-      {chars > LONG_TEXT_HINT && (
-        <p className="text-sm text-muted-foreground">
-          文本较长，将分 {splitForReading(text).length} 段合成；建议导入书库以获得更好的续听体验。
-        </p>
-      )}
-
-      {error && <p className="text-sm text-destructive">{error}</p>}
-
-      {segs.length > 0 && (
-        <div className="overflow-hidden rounded-xl border border-border bg-card">
-          <div className="border-b border-border px-5 py-3 text-sm font-medium">
-            段落 · 点击可跳转
-          </div>
-          <div className="max-h-96 divide-y divide-border overflow-y-auto">
-            {segs.map((seg, i) => (
-              <button
-                key={i}
-                onClick={() => jumpTo(i)}
-                className={`flex w-full gap-3 px-5 py-3 text-left text-sm transition-colors hover:bg-accent ${
-                  i === index ? 'border-l-2 border-primary bg-primary/5' : 'border-l-2 border-transparent'
-                }`}
-              >
-                <span className="shrink-0 tabular-nums text-muted-foreground">{i + 1}</span>
-                <span className={i === index ? '' : 'text-muted-foreground'}>{seg.text}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 }

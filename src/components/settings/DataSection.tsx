@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Download, Upload } from 'lucide-react';
 import { open, save } from '@tauri-apps/plugin-dialog';
 import { readTextFile, writeTextFile } from '@tauri-apps/plugin-fs';
@@ -17,6 +17,18 @@ function stamp(): string {
   const d = new Date();
   const p = (n: number): string => String(n).padStart(2, '0');
   return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}`;
+}
+
+function Row({ title, desc, control }: { title: string; desc: string; control: ReactNode }) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-6 border-t border-line py-[15px]">
+      <div className="min-w-0">
+        <b className="block text-[12.5px] font-semibold">{title}</b>
+        <span className="mt-[3px] block text-[10.5px] text-muted-foreground">{desc}</span>
+      </div>
+      <div className="flex shrink-0 items-center gap-2.5">{control}</div>
+    </div>
+  );
 }
 
 export function DataSection() {
@@ -82,22 +94,33 @@ export function DataSection() {
   }
 
   return (
-    <section className="space-y-4">
-      <div>
-        <h2 className="text-base font-medium">数据</h2>
-        <p className="text-sm text-muted-foreground">
-          备份节点与偏好设置，不含 API Key 与分享 Token。
-        </p>
+    <section>
+      <div className="mb-4">
+        <h2 className="text-[17px] font-semibold tracking-[-0.01em]">数据</h2>
+        <p className="mt-1 text-[11.5px] text-muted-foreground">备份节点与偏好设置，不含 API Key 与分享 Token。</p>
       </div>
-      <div className="flex flex-wrap gap-2">
-        <Button variant="outline" onClick={() => void onExport()} disabled={busy !== null}>
-          <Download className="mr-1.5 h-4 w-4" />
-          {busy === 'export' ? '导出中…' : '导出配置'}
-        </Button>
-        <Button variant="outline" onClick={() => void onImport()} disabled={busy !== null}>
-          <Upload className="mr-1.5 h-4 w-4" />
-          {busy === 'import' ? '导入中…' : '导入配置'}
-        </Button>
+      <div className="mb-3.5 rounded-[13px] border border-line bg-card px-[18px] py-1">
+        <div className="pb-0.5 pt-3.5 text-[12px] font-semibold">配置迁移</div>
+        <Row
+          title="导出配置"
+          desc="包含设置、节点列表（不含 API Key）与调度参数。"
+          control={
+            <Button variant="outline" onClick={() => void onExport()} disabled={busy !== null}>
+              <Download className="mr-1.5 h-4 w-4" />
+              {busy === 'export' ? '导出中…' : '导出配置'}
+            </Button>
+          }
+        />
+        <Row
+          title="导入配置"
+          desc="从 JSON 文件恢复设置与节点列表。"
+          control={
+            <Button variant="outline" onClick={() => void onImport()} disabled={busy !== null}>
+              <Upload className="mr-1.5 h-4 w-4" />
+              {busy === 'import' ? '导入中…' : '导入配置'}
+            </Button>
+          }
+        />
       </div>
     </section>
   );

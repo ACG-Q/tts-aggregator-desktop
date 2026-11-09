@@ -28,11 +28,25 @@ const MODES: [CallMode, string, string][] = [
 ];
 
 function healthBadge(n: TtsNode) {
-  if (n.disabled) return <Badge className="bg-muted text-muted-foreground hover:bg-muted">已禁用</Badge>;
-  if (isCoolingDown(n, Date.now())) return <Badge className="bg-warning/20 text-warning hover:bg-warning/20">冷却中</Badge>;
+  if (n.disabled) return <Badge className="bg-surface-3 text-muted-foreground hover:bg-surface-3">已禁用</Badge>;
+  if (isCoolingDown(n, Date.now())) return <Badge className="bg-warning/15 text-warning hover:bg-warning/15">冷却中</Badge>;
   if (n.health === 'OK') return <Badge className="bg-success/15 text-success hover:bg-success/15">正常</Badge>;
   if (n.health === 'FAIL') return <Badge variant="destructive">失败</Badge>;
   return <Badge variant="secondary">未测</Badge>;
+}
+
+function Stat({ value, label, sub, tone }: { value: string; label: string; sub: string; tone?: 'success' | 'warning' }) {
+  return (
+    <div className="rounded-[11px] border border-line bg-card px-4 py-3.5">
+      <div className={cn(
+        'text-[21px] font-semibold leading-tight tracking-[-0.02em] num',
+        tone === 'success' && 'text-success',
+        tone === 'warning' && 'text-warning',
+      )}>{value}</div>
+      <div className="mt-[3px] text-[10.5px] text-muted-foreground">{label}</div>
+      <div className="mt-[7px] text-[10.5px] text-faint">{sub}</div>
+    </div>
+  );
 }
 
 const emptyForm = { baseUrl: '', label: '', apiKey: '' };
@@ -60,6 +74,19 @@ export function NodesPage() {
   const shown = st.nodes.filter(
     (n) => !q || n.label.includes(q) || n.baseUrl.toLowerCase().includes(q.toLowerCase()),
   );
+
+  const stats = useMemo(() => {
+    const now = Date.now();
+    const enabled = st.nodes.filter((n) => !n.disabled);
+    const healthy = st.nodes.filter((n) => !n.disabled && n.health === 'OK' && !isCoolingDown(n, now));
+    const cooling = st.nodes.filter((n) => !n.disabled && isCoolingDown(n, now));
+    const disabled = st.nodes.filter((n) => n.disabled).length;
+    const untested = st.nodes.filter((n) => !n.disabled && n.health === 'UNKNOWN').length;
+    const coolingMin = cooling.length > 0
+      ? Math.max(1, Math.ceil((Math.min(...cooling.map((n) => n.cooldownUntil)) - now) / 60000))
+      : 0;
+    return { enabled: enabled.length, healthy: healthy.length, cooling: cooling.length, disabled, untested, coolingMin };
+  }, [st.nodes]);
 
   function openAdd(): void {
     setForm(emptyForm);
@@ -96,16 +123,17 @@ export function NodesPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div>
       <PageHeader
-        title="节点"
-        description="管理 TTS 节点、探测健康度、配置调度池。"
+        eyebrow="Nodes · 节点"
+        title="节点池"
+        description="管理 TTS 节点、探测健康度，并决定朗读时如何调度。"
         actions={
           <>
             <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-faint" />
               <Input placeholder="搜索备注 / URL" value={q} onChange={(e) => setQ(e.target.value)}
-                className="w-56 pl-9" />
+                className="h-9 w-52 pl-8" />
             </div>
             <Button variant="outline" onClick={() => setBatchOpen(true)}>
               <ListPlus className="mr-1.5 h-4 w-4" />
@@ -119,19 +147,25 @@ export function NodesPage() {
         }
       />
 
-      {/* 调度池 + 探测 */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <div className="rounded-xl border border-border bg-card p-4 md:col-span-2">
-          <div className="mb-2 text-xs font-medium text-muted-foreground">调度模式</div>
-          <div className="flex w-fit gap-1 rounded-lg bg-muted p-1">
+      <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <Stat value={String(st.nodes.length)} label="节点总数" sub={`启用 ${stats.enabled} · 禁用 ${stats.disabled}`} />
+        <Stat value={String(stats.healthy)} label="健康可用" sub={`占比 ${st.nodes.length ? Math.round((stats.healthy / st.nodes.length) * 100) : 0}%`} tone="success" />
+        <Stat value={String(stats.cooling)} label="冷却中" sub={stats.cooling > 0 ? `约 ${stats.coolingMin} 分钟后恢复` : '暂无冷却节点'} tone="warning" />
+        <Stat value={String(stats.untested)} label="待探测" sub="点击「全部探测」更新" />
+      </div>
+
+      <div className="mb-3.5 grid gap-3 md:grid-cols-[1.5fr_1fr]">
+        <div className="rounded-[13px] border border-line bg-card px-4 py-4">
+          <div className="mb-2.5 text-[11px] text-muted-foreground">调度模式</div>
+          <div className="inline-flex gap-0.5 rounded-[9px] border border-line bg-surface-2 p-[3px]" role="group" aria-label="调度模式">
             {MODES.map(([mode, label]) => (
               <button
                 key={mode}
                 onClick={() => void updatePool((c) => ({ ...c, mode }))}
                 className={cn(
-                  'rounded-md px-4 py-1.5 text-sm transition-colors',
+                  'rounded-md px-4 py-1.5 text-[12px] transition-colors',
                   pool.mode === mode
-                    ? 'bg-card font-medium text-foreground shadow-sm'
+                    ? 'bg-card font-semibold text-foreground shadow-sm'
                     : 'text-muted-foreground hover:text-foreground',
                 )}
               >
@@ -139,20 +173,20 @@ export function NodesPage() {
               </button>
             ))}
           </div>
-          <p className="mt-2 text-xs text-muted-foreground">
+          <p className="mt-2.5 text-[11px] text-faint">
             {MODES.find(([m]) => m === pool.mode)?.[2]}
           </p>
         </div>
-        <div className="rounded-xl border border-border bg-card p-4">
-          <div className="mb-2 text-xs font-medium text-muted-foreground">探测</div>
+        <div className="rounded-[13px] border border-line bg-card px-4 py-4">
+          <div className="mb-2.5 text-[11px] text-muted-foreground">探测</div>
           <Button variant="outline" className="w-full" onClick={() => void st.probeAll()} disabled={st.probing}>
             <RefreshCw className={cn('mr-1.5 h-4 w-4', st.probing && 'animate-spin')} />
             {st.probing ? (st.probeProgress ?? '探测中…') : `全部探测 · 并发 ${appPrefs.probeConcurrency}`}
           </Button>
-          <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
+          <div className="mt-3.5 flex items-center justify-between text-[10.5px] text-muted-foreground">
             <span>探测并发</span>
             <Input
-              type="number" min={1} max={8} className="h-7 w-16"
+              type="number" min={1} max={8} className="h-7 w-16 text-center"
               value={appPrefs.probeConcurrency}
               onChange={(e) => void saveAppPrefs({
                 ...appPrefs,
@@ -163,47 +197,46 @@ export function NodesPage() {
         </div>
       </div>
 
-      {/* 导入：折叠 */}
-      <div>
+      <div className="mb-3.5">
         <button
           onClick={() => setImportOpen((v) => !v)}
-          className="flex w-full items-center gap-2 rounded-xl border border-dashed border-border bg-card/50 px-5 py-3 text-sm text-muted-foreground transition-colors hover:bg-accent"
+          className="flex w-full items-center gap-2.5 rounded-[11px] border border-dashed border-line-strong px-4 py-2.5 text-left text-[12px] text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
         >
           {importOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
           从 FOFA / ZoomEye 导入节点
+          <span className="ml-auto text-[10.5px] text-faint">可选</span>
         </button>
         {importOpen && <div className="mt-3"><ImportPanel /></div>}
       </div>
 
-      {/* 节点表 */}
-      <div className="overflow-hidden rounded-xl border border-border bg-card">
+      <div className="overflow-hidden rounded-[13px] border border-line bg-card">
         <Table>
           <TableHeader>
-            <TableRow className="bg-muted/50 hover:bg-muted/50">
-              <TableHead className="pl-5">节点</TableHead>
+            <TableRow className="hover:bg-surface-2">
+              <TableHead className="pl-[18px]">节点</TableHead>
               <TableHead>状态</TableHead>
               <TableHead>版本 / Key</TableHead>
               <TableHead>音色</TableHead>
               <TableHead className="text-center">组</TableHead>
               <TableHead className="text-center">手选</TableHead>
-              <TableHead className="pr-5 text-right">操作</TableHead>
+              <TableHead className="pr-[18px] text-right">操作</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {shown.map((n) => (
               <TableRow key={n.id}>
-                <TableCell className="pl-5">
-                  <div className="font-medium">{n.label || '—'}</div>
-                  <div className="font-mono text-xs text-muted-foreground">{n.baseUrl}</div>
+                <TableCell className="pl-[18px]">
+                  <div className="font-semibold text-[12.5px]">{n.label || '—'}</div>
+                  <div className="font-mono text-[10.5px] text-faint">{n.baseUrl}</div>
                 </TableCell>
                 <TableCell>{healthBadge(n)}</TableCell>
                 <TableCell>
                   <div className="flex items-center gap-1.5">
                     <Badge variant="outline">{n.apiVersion}</Badge>
-                    {n.keyless && <span className="text-xs text-success">免Key</span>}
+                    {n.keyless && <span className="text-[10px] text-success">免 Key</span>}
                   </div>
                 </TableCell>
-                <TableCell className="tabular-nums">{n.voiceCount || '—'}</TableCell>
+                <TableCell className="num">{n.voiceCount || '—'}</TableCell>
                 <TableCell className="text-center">
                   <Checkbox
                     checked={pool.groupIds.includes(n.id)}
@@ -221,22 +254,22 @@ export function NodesPage() {
                     onCheckedChange={() => void updatePool((c) => ({ ...c, manualId: n.id, manualFailCount: 0 }))}
                   />
                 </TableCell>
-                <TableCell className="pr-5 text-right">
+                <TableCell className="pr-[18px] text-right">
                   <div className="flex justify-end gap-1">
-                    <Button variant="outline" size="sm" onClick={() => void st.reprobe(n)}>测试</Button>
-                    <Button variant="outline" size="sm" onClick={() => openEdit(n)}>编辑</Button>
-                    <Button variant="outline" size="sm" onClick={() => void st.setDisabled([n.id], !n.disabled)}>
+                    <Button variant="ghost" size="sm" onClick={() => void st.reprobe(n)}>测试</Button>
+                    <Button variant="ghost" size="sm" onClick={() => openEdit(n)}>编辑</Button>
+                    <Button variant="ghost" size="sm" onClick={() => void st.setDisabled([n.id], !n.disabled)}>
                       {n.disabled ? '启用' : '禁用'}
                     </Button>
-                    <Button variant="outline" size="sm" className="text-destructive hover:bg-destructive/10"
-                      onClick={() => setDeleteFor(n)}>删</Button>
+                    <Button variant="ghost" size="sm" className="text-destructive hover:bg-destructive/10"
+                      onClick={() => setDeleteFor(n)}>删除</Button>
                   </div>
                 </TableCell>
               </TableRow>
             ))}
             {shown.length === 0 && (
               <TableRow>
-                <TableCell colSpan={7} className="py-12 text-center text-muted-foreground">
+                <TableCell colSpan={7} className="py-12 text-center text-[12px] text-muted-foreground">
                   {st.nodes.length ? '没有匹配的节点' : '还没有节点，点击「添加节点」'}
                 </TableCell>
               </TableRow>
@@ -264,7 +297,7 @@ export function NodesPage() {
               <Label>API Key（免 Key 节点留空）</Label>
               <Input type="password" value={form.apiKey} onChange={(e) => setForm({ ...form, apiKey: e.target.value })} />
             </div>
-            {err && <div className="text-sm text-destructive">{err}</div>}
+            {err && <div className="text-[12.5px] text-destructive">{err}</div>}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowForm(null)}>取消</Button>
@@ -286,7 +319,7 @@ export function NodesPage() {
               onChange={(e) => setBatchText(e.target.value)}
               className="font-mono text-xs"
             />
-            <div className="flex flex-wrap gap-3 text-xs">
+            <div className="flex flex-wrap gap-3 text-[11.5px]">
               <span className="text-success">可添加 {batch.items.length} 条</span>
               {batch.duplicates.length > 0 && (
                 <span className="text-muted-foreground">重复 {batch.duplicates.length} 条（已忽略）</span>
