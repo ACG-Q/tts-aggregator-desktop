@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { toast } from 'sonner';
 import { splitForReading } from '../lib/split';
+import { PrefetchWindow } from '../lib/prefetch';
 import type { PlaySource } from '../types/models';
 
 export type { PlaySource };
@@ -65,9 +66,28 @@ let runToken = 0;
 let resolveEnded: (() => void) | null = null;
 let currentUrl: string | null = null;
 let hooks: PlayerHooks = {};
-let prefetch: { index: number; promise: Promise<ArrayBuffer> } | null = null;
 let snapshotSink: SnapshotSink | null = null;
 let sleepTimeout: ReturnType<typeof setTimeout> | null = null;
+
+const prefetchWindow = new PrefetchWindow({
+  size: 3,
+  synth: (text) => (synthFn ? synthFn(text) : Promise.reject(new Error('朗读器未初始化'))),
+  onState: (index, state) => {
+    const s = usePlayerStore.getState();
+    if (s.status === 'idle') return;
+    const seg = s.segs[index];
+    if (!seg) return;
+    if (state === 'start' && seg.status === 'pending') {
+      usePlayerStore.setState({
+        segs: s.segs.map((x, j) => (j === index ? { ...x, status: 'synthesizing' as const } : x)),
+      });
+    } else if (state === 'fail' && seg.status === 'synthesizing') {
+      usePlayerStore.setState({
+        segs: s.segs.map((x, j) => (j === index ? { ...x, status: 'pending' as const } : x)),
+      });
+    }
+  },
+});
 
 function clearSleepTimeout(): void {
   if (sleepTimeout) {
@@ -151,25 +171,18 @@ async function pump(token: number): Promise<void> {
     let buf: ArrayBuffer | null = null;
     try {
       if (!synthFn) throw new Error('朗读器未初始化');
-      let p: Promise<ArrayBuffer>;
-      if (prefetch && prefetch.index === i) {
-        p = prefetch.promise;
-        prefetch = null;
-      } else {
-        p = synthFn(seg.text);
+      const prefetched = prefetchWindow.take(i);
+      const p = prefetched ?? synthFn(seg.text);
+      prefetchWindow.ensure(i, store.getState().segs);
+      try {
+        buf = await p;
+      } catch (e) {
+        if (!prefetched || token !== runToken) throw e;
+        // 预取失败不影响正常朗读：轮到该段时直接再合成一次
+        buf = await synthFn(seg.text);
       }
-      const nextIdx = i + 1;
-      const nextText = store.getState().segs[nextIdx]?.text;
-      if (synthFn && nextText && (!prefetch || prefetch.index !== nextIdx)) {
-        store.setState({
-          segs: store.getState().segs.map((x, j) =>
-            j === nextIdx && x.status === 'pending' ? { ...x, status: 'synthesizing' as const } : x),
-        });
-        prefetch = { index: nextIdx, promise: synthFn(nextText) };
-        prefetch.promise.catch(() => { /* 到位时统一处理失败 */ });
-      }
-      buf = await p;
     } catch (e) {
+      if (token !== runToken) return;
       store.setState({ error: `第 ${i + 1} 段失败：${e instanceof Error ? e.message : String(e)}` });
       buf = null;
     }
@@ -214,7 +227,7 @@ async function pump(token: number): Promise<void> {
     });
     emitSnapshot(false);
     hooks.onSegDone?.(i, store.getState().source ?? { kind: 'text' });
-    prefetch = null;
+    prefetchWindow.release(i);
   }
 }
 
@@ -226,7 +239,7 @@ function resetPlayback(): void {
   const r = resolveEnded;
   resolveEnded = null;
   r?.();
-  prefetch = null;
+  prefetchWindow.clear();
 }
 
 export const usePlayerStore = create<PlayerState>((set, get) => ({
