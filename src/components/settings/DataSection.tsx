@@ -1,15 +1,22 @@
-import { useState, type ReactNode } from 'react';
-import { Download, Upload } from 'lucide-react';
+import { useEffect, useState, type ReactNode } from 'react';
+import { Database, Download, Upload } from 'lucide-react';
 import { open, save } from '@tauri-apps/plugin-dialog';
 import { readTextFile, writeTextFile } from '@tauri-apps/plugin-fs';
 import { toast } from 'sonner';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import {
   buildConfigFile, mergeImportedNode, parseConfigFile,
 } from '@/lib/configTransfer';
 import { normalizeBaseUrl } from '@/types/models';
 import { deps } from '@/store/deps';
 import { notifyShare } from '@/store/shareSync';
+import { useLogsStore } from '@/store/logsStore';
 import { useNodesStore } from '@/store/nodesStore';
 import { useSettingsStore } from '@/store/settingsStore';
 
@@ -37,6 +44,36 @@ export function DataSection() {
   const saveSynth = useSettingsStore((s) => s.saveSynth);
   const saveAppPrefs = useSettingsStore((s) => s.saveAppPrefs);
   const [busy, setBusy] = useState<'export' | 'import' | null>(null);
+  const [stats, setStats] = useState<{ books: number; chapters: number } | null>(null);
+  const [clearing, setClearing] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    void deps().books.getAll()
+      .then((books) => {
+        if (!alive) return;
+        setStats({
+          books: books.length,
+          chapters: books.reduce((sum, b) => sum + b.chapterCount, 0),
+        });
+      })
+      .catch((e: unknown) => {
+        console.warn('读取数据库统计失败', e);
+      });
+    return () => { alive = false; };
+  }, []);
+
+  async function onClearLogs(): Promise<void> {
+    setClearing(true);
+    try {
+      await useLogsStore.getState().clear();
+      toast.success('已清空全部日志');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
+    } finally {
+      setClearing(false);
+    }
+  }
 
   async function onExport(): Promise<void> {
     setBusy('export');
@@ -119,6 +156,51 @@ export function DataSection() {
               <Upload className="mr-1.5 h-4 w-4" />
               {busy === 'import' ? '导入中…' : '导入配置'}
             </Button>
+          }
+        />
+      </div>
+
+      <div className="mb-3.5 rounded-[13px] border border-line bg-card px-[18px] py-1">
+        <div className="pb-0.5 pt-3.5 text-[12px] font-semibold">数据库</div>
+        <Row
+          title="本地数据库"
+          desc="书库、章节与朗读进度。"
+          control={
+            <Badge variant="secondary" className="num gap-1.5 px-2.5 py-1 text-[11px]">
+              <Database className="h-3.5 w-3.5" />
+              {stats ? `${stats.books} 本书 · ${stats.chapters} 章` : '—'}
+            </Badge>
+          }
+        />
+      </div>
+
+      <div className="mb-3.5 rounded-[13px] border border-line bg-card px-[18px] py-1">
+        <div className="pb-0.5 pt-3.5 text-[12px] font-semibold text-destructive">危险操作</div>
+        <Row
+          title="清空调用日志"
+          desc="删除全部调用记录，不影响节点与书库。"
+          control={
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" disabled={clearing}>
+                  {clearing ? '清空中…' : '清空日志'}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>清空全部调用日志？</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    此操作不可恢复。节点、书库与朗读进度不会被删除。
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>取消</AlertDialogCancel>
+                  <AlertDialogAction variant="destructive" onClick={() => void onClearLogs()}>
+                    确认清空
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           }
         />
       </div>
