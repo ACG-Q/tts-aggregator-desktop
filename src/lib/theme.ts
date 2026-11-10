@@ -1,4 +1,4 @@
-import type { ThemeMode } from '../types/models';
+import type { PaletteId, ThemeMode } from '../types/models';
 
 export type ResolvedTheme = 'light' | 'dark';
 
@@ -19,9 +19,9 @@ export function watchSystemTheme(cb: (dark: boolean) => void): () => void {
   return () => mq.removeEventListener('change', handler);
 }
 
-export function mirrorTheme(theme: ThemeMode): void {
+export function mirrorPrefs(prefs: { theme: ThemeMode; palette: PaletteId }): void {
   try {
-    localStorage.setItem('app_prefs', JSON.stringify({ theme }));
+    localStorage.setItem('app_prefs', JSON.stringify({ theme: prefs.theme, palette: prefs.palette }));
   } catch {
     /* 隐私模式或存储禁用时忽略 */
   }

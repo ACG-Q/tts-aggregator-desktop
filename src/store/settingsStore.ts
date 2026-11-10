@@ -5,7 +5,7 @@ import {
   normalizeAppPrefs, normalizeSynth,
   type AppPrefs, type PoolConfig, type ShareConfig, type SynthSettings,
 } from '../types/models';
-import { mirrorTheme } from '../lib/theme';
+import { mirrorPrefs } from '../lib/theme';
 import { deps } from './deps';
 import { notifyShare } from './shareSync';
 import { usePlayerStore } from './playerStore';
@@ -39,7 +39,8 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       appPrefs: normalizeAppPrefs(await s.getJson<Partial<AppPrefs>>('app_prefs', {})),
       loaded: true,
     });
-    mirrorTheme(get().appPrefs.theme);
+    const prefs = get().appPrefs;
+    mirrorPrefs({ theme: prefs.theme, palette: prefs.palette });
   },
   async saveSynth(synth) {
     set({ synth });
@@ -63,7 +64,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   },
   async saveAppPrefs(appPrefs) {
     set({ appPrefs });
-    mirrorTheme(appPrefs.theme);
+    mirrorPrefs({ theme: appPrefs.theme, palette: appPrefs.palette });
     usePlayerStore.getState().setDefaultSleepMinutes(appPrefs.sleepMinutes);
     await deps().settings.setJson('app_prefs', appPrefs);
     if (!appPrefs.resumeLast) await useResumeStore.getState().clear();

@@ -1,3 +1,5 @@
+import { isPaletteId } from '../lib/palette';
+
 export type ApiVersion = 'V1' | 'LEGACY' | 'UNKNOWN';
 export type Health = 'OK' | 'FAIL' | 'UNKNOWN';
 export type CallMode = 'AUTO' | 'GROUP' | 'MANUAL';
@@ -31,7 +33,7 @@ export interface Voice {
 }
 
 export interface SynthPrefs { voice: string; rate: number; pitch: number; style: string }
-export interface SynthSettings { rate: number; pitch: number; voice: string }
+export interface SynthSettings { rate: number; pitch: number; voice: string; style: string }
 export interface PoolConfig {
   mode: CallMode;
   groupIds: string[];
@@ -41,6 +43,7 @@ export interface PoolConfig {
 }
 export interface ShareConfig { enabled: boolean; port: number; token: string; localhostOnly: boolean }
 export type ThemeMode = 'system' | 'light' | 'dark';
+export type PaletteId = 'ink' | 'celadon' | 'walnut';
 
 export type PlaySource =
   | { kind: 'text' }
@@ -49,6 +52,7 @@ export type PlaySource =
 export interface AppPrefs {
   probeConcurrency: number;
   theme: ThemeMode;
+  palette: PaletteId;
   playbackRate: number;
   volume: number;
   failThreshold: number;
@@ -104,10 +108,11 @@ export const API_VERSION_ORDINAL: Record<ApiVersion, number> = { V1: 0, LEGACY: 
 export const MODE_ORDINAL: Record<CallMode, number> = { AUTO: 0, GROUP: 1, MANUAL: 2 };
 
 export const DEFAULT_POOL: PoolConfig = { mode: 'AUTO', groupIds: [], manualId: null, groupCursor: 0, manualFailCount: 0 };
-export const DEFAULT_SYNTH: SynthSettings = { rate: 0, pitch: 0, voice: '' };
+export const DEFAULT_SYNTH: SynthSettings = { rate: 0, pitch: 0, voice: '', style: '' };
 export const DEFAULT_APP_PREFS: AppPrefs = {
   probeConcurrency: 4,
   theme: 'system',
+  palette: 'ink',
   playbackRate: 1,
   volume: 100,
   failThreshold: 3,
@@ -135,6 +140,7 @@ export function normalizeAppPrefs(raw: unknown): AppPrefs {
     theme: o.theme === 'light' || o.theme === 'dark' || o.theme === 'system'
       ? o.theme
       : DEFAULT_APP_PREFS.theme,
+    palette: isPaletteId(o.palette) ? o.palette : DEFAULT_APP_PREFS.palette,
     playbackRate:
       typeof o.playbackRate === 'number' && o.playbackRate >= 0.5 && o.playbackRate <= 2
         ? o.playbackRate
@@ -161,6 +167,7 @@ export function normalizeSynth(raw: unknown): SynthSettings {
     voice: typeof o.voice === 'string' ? o.voice : '',
     rate: clamp(o.rate, 0),
     pitch: clamp(o.pitch, 0),
+    style: typeof o.style === 'string' ? o.style : '',
   };
 }
 

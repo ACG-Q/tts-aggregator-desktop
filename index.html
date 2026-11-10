@@ -9,12 +9,16 @@
       (function () {
         try {
           var raw = localStorage.getItem('app_prefs');
-          var theme = raw ? (JSON.parse(raw).theme || 'system') : 'system';
-          var dark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+          var prefs = raw ? JSON.parse(raw) : {};
+          var theme = prefs.theme || 'system';
+          var palette = prefs.palette || 'ink';
+          var dark = theme === 'dark'
+            || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
           document.documentElement.classList.toggle('dark', dark);
           document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
+          document.documentElement.dataset.palette = palette;
         } catch (e) {
-          /* 非 JSON 或首次启动：保持浅色 */
+          /* 解析失败：保持默认墨绿浅色 */
         }
       })();
     </script>
