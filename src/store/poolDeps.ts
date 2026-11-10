@@ -35,7 +35,7 @@ export function makePoolDeps(nodes: TtsNode[], pool: PoolConfig): PoolDeps {
 
 export function currentPrefs(): SynthPrefs {
   const s = useSettingsStore.getState().synth;
-  return { voice: s.voice, rate: s.rate, pitch: s.pitch, style: '' };
+  return { voice: s.voice, rate: s.rate, pitch: s.pitch, style: s.style };
 }
 
 export async function synthesizeText(

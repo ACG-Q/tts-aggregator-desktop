@@ -54,3 +54,36 @@ export function parseVoices(data: unknown): Voice[] {
   }
   return out;
 }
+
+const STYLE_NAME_ZH: Record<string, string> = {
+  assistant: '助手',
+  chat: '闲聊',
+  customerservice: '客服',
+  newscast: '新闻',
+  affectionate: '亲切',
+  angry: '生气',
+  calm: '平静',
+  cheerful: '愉快',
+  disgruntled: '不满',
+  fearful: '恐惧',
+  gentle: '温柔',
+  lyrical: '抒情',
+  sad: '悲伤',
+  serious: '严肃',
+  poetry: '诗歌',
+  hopeful: '希望',
+  shouting: '喊叫',
+  terrified: '惊恐',
+  unfriendly: '冷淡',
+  whispering: '耳语',
+  excited: '兴奋',
+  friendly: '友好',
+  empathetic: '共情',
+  narration: '旁白',
+  'documentary-narration': '纪录片旁白',
+  'sports-commentary': '体育解说',
+};
+
+export function styleDisplayName(style: string): string {
+  return STYLE_NAME_ZH[style] ?? style;
+}

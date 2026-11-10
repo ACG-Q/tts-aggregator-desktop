@@ -11,7 +11,7 @@ import { PALETTES } from '@/lib/palette';
 import { PageHeader } from '@/components/PageHeader';
 import { DataSection } from '@/components/settings/DataSection';
 import { playAudition, stopAudition } from '@/lib/audition';
-import { voiceDisplayName } from '@/lib/voices';
+import { styleDisplayName, voiceDisplayName } from '@/lib/voices';
 import { synthesizeText } from '@/store/poolDeps';
 import { useNodesStore } from '@/store/nodesStore';
 import { useSettingsStore } from '@/store/settingsStore';
@@ -121,6 +121,7 @@ export function SettingsPage() {
   const [running, setRunning] = useState(false);
   const [active, setActive] = useState<SectionKey>('voice');
   const [auditioning, setAuditioning] = useState(false);
+  const voiceStyles = voices.find((v) => v.id === synth.voice)?.styles ?? [];
 
   useEffect(() => {
     void invoke<string>('share_local_ip').then(setIp).catch(() => setIp('127.0.0.1'));
@@ -156,7 +157,7 @@ export function SettingsPage() {
     setAuditioning(true);
     try {
       const { bytes } = await synthesizeText('你好，这是一段试听。', {
-        voice: synth.voice, rate: synth.rate, pitch: synth.pitch, style: '',
+        voice: synth.voice, rate: synth.rate, pitch: synth.pitch, style: synth.style,
       });
       await playAudition(bytes);
     } catch (e) {
@@ -213,13 +214,34 @@ export function SettingsPage() {
                     <Select
                       value={synth.voice || 'node-default'}
                       onOpenChange={(open) => { if (open) void useVoicesStore.getState().load(); }}
-                      onValueChange={(v) => void saveSynth({ ...synth, voice: v === 'node-default' ? '' : v })}
+                      onValueChange={(v) => void saveSynth({ ...synth, voice: v === 'node-default' ? '' : v, style: '' })}
                     >
                       <SelectTrigger className="w-[190px]"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="node-default">节点默认音色</SelectItem>
                         {voices.map((v) => (
                           <SelectItem key={v.id} value={v.id}>{voiceDisplayName(v)}（{v.id}）</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  }
+                />
+                <SetRow
+                  title="风格"
+                  desc={voiceStyles.length
+                    ? `当前 ${synth.style ? styleDisplayName(synth.style) : '默认风格'}，部分节点可能忽略该参数。`
+                    : '当前音色没有可选风格。'}
+                  control={
+                    <Select
+                      value={synth.style || 'default-style'}
+                      onValueChange={(v) => void saveSynth({ ...synth, style: v === 'default-style' ? '' : v })}
+                      disabled={voiceStyles.length === 0}
+                    >
+                      <SelectTrigger className="w-[190px]"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="default-style">默认风格</SelectItem>
+                        {voiceStyles.map((s) => (
+                          <SelectItem key={s} value={s}>{styleDisplayName(s)}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>

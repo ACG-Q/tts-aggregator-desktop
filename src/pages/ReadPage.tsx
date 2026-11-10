@@ -134,7 +134,7 @@ export function ReadPage() {
             <Select
               value={synth.voice || 'node-default'}
               onOpenChange={(open) => { if (open) void load(); }}
-              onValueChange={(v) => void saveSynth({ ...synth, voice: v === 'node-default' ? '' : v })}
+              onValueChange={(v) => void saveSynth({ ...synth, voice: v === 'node-default' ? '' : v, style: '' })}
             >
               <SelectTrigger className="h-9 w-full"><SelectValue placeholder="节点默认音色" /></SelectTrigger>
               <SelectContent>
