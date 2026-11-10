@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { Voice } from '../types/models';
 import {
   filterVoices, groupByLanguage, languageBucket, pushRecentVoice, readRecentVoices,
+  sortVoicesByLanguage,
 } from './voiceFilter';
 
 function voice(id: string, name: string, locale: string, gender = 'Female', styles: string[] | null = null): Voice {
@@ -40,8 +41,15 @@ describe('filterVoices', () => {
   });
 });
 
-describe('groupByLanguage', () => {
-  it('中文优先，其余按数量降序', () => {
+describe('sortVoicesByLanguage', () => {
+  it('中文排在最前，其余按语言优先级', () => {
+    const sorted = sortVoicesByLanguage([...VOICES].reverse());
+    expect(sorted[0].locale.startsWith('zh')).toBe(true);
+    expect(sorted.map((v) => languageBucket(v.locale))).toEqual(['zh', 'zh', 'en', 'ja', 'other']);
+  });
+});
+
+describe('groupByLanguage', () => {  it('中文优先，其余按数量降序', () => {
     const groups = groupByLanguage(VOICES);
     expect(groups[0].bucket).toBe('zh');
     expect(groups[0].voices).toHaveLength(2);

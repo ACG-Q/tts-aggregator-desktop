@@ -9,7 +9,8 @@ import { PageHeader } from '@/components/PageHeader';
 import { playAudition, stopAudition } from '@/lib/audition';
 import { styleDisplayName, voiceDisplayName } from '@/lib/voices';
 import {
-  LANGUAGE_OPTIONS, filterVoices, groupByLanguage, pushRecentVoice, readRecentVoices,
+  LANGUAGE_OPTIONS, filterVoices, groupByLanguage, languageBucket, pushRecentVoice, readRecentVoices,
+  sortVoicesByLanguage,
   type LanguageBucket,
 } from '@/lib/voiceFilter';
 import { synthesizeText } from '@/store/poolDeps';
@@ -47,7 +48,7 @@ function VoiceRow({ v, isDefault, defaultStyle, auditioningKey, onAudition, onSe
 
   return (
     <div className="px-4 py-3 transition-colors hover:bg-surface-2">
-      <div className="grid grid-cols-[36px_minmax(0,1fr)_auto] items-center gap-3 md:grid-cols-[36px_minmax(0,210px)_1fr_auto_auto_24px]">
+      <div className="grid grid-cols-[36px_minmax(0,1fr)_auto_24px] items-center gap-3 lg:grid-cols-[36px_minmax(0,210px)_1fr_auto_auto_24px]">
         <div className="grid h-9 w-9 place-items-center rounded-[9px] border border-line bg-surface-2 text-[13px] font-semibold text-muted-foreground">
           {voiceDisplayName(v).slice(0, 1) || '音'}
         </div>
@@ -55,14 +56,14 @@ function VoiceRow({ v, isDefault, defaultStyle, auditioningKey, onAudition, onSe
           <div className="truncate text-[12.5px] font-semibold">{voiceDisplayName(v)}</div>
           <div className="truncate font-mono text-[10px] text-faint">{v.id}</div>
         </div>
-        <div className="hidden min-w-0 flex-wrap gap-1.5 md:flex">
+        <div className="hidden min-w-0 flex-wrap gap-1.5 lg:flex">
           <span className="inline-flex h-[21px] items-center rounded-md border border-line bg-surface-2 px-1.5 text-[10px] text-muted-foreground">{v.locale}</span>
           <span className="inline-flex h-[21px] items-center rounded-md border border-line bg-surface-2 px-1.5 text-[10px] text-muted-foreground">{genderLabel(v.gender)}</span>
           <span className="inline-flex h-[21px] items-center rounded-md border border-line bg-surface-2 px-1.5 text-[10px] text-muted-foreground">
             {hasStyles ? `${styles.length} 种风格` : '无风格'}
           </span>
         </div>
-        <div className="hidden w-14 justify-center md:flex">
+        <div className="hidden w-14 justify-center lg:flex">
           {isDefault
             ? <Badge className="bg-primary/12 text-primary hover:bg-primary/12">默认</Badge>
             : <span className="text-[10px] text-faint">—</span>}
@@ -96,7 +97,7 @@ function VoiceRow({ v, isDefault, defaultStyle, auditioningKey, onAudition, onSe
           disabled={!hasStyles}
           onClick={() => setOpen((x) => !x)}
           className={cn(
-            'hidden h-6 w-6 place-items-center rounded-md text-faint hover:bg-surface-3 hover:text-foreground md:grid',
+            'grid h-6 w-6 place-items-center rounded-md text-faint hover:bg-surface-3 hover:text-foreground',
             !hasStyles && 'invisible',
           )}
         >
@@ -155,12 +156,20 @@ export function VoicesPage() {
   useEffect(() => { void load(); }, []);
 
   const shown = useMemo(
-    () => filterVoices(voices, { query: q, language, gender }),
+    () => sortVoicesByLanguage(filterVoices(voices, { query: q, language, gender })),
     [voices, q, language, gender],
   );
   const visible = shown.slice(0, limit);
   const searching = q.trim().length > 0 || language !== 'all' || gender !== '';
   const groups = useMemo(() => groupByLanguage(visible), [visible]);
+  const bucketTotals = useMemo(() => {
+    const map = new Map<LanguageBucket, number>();
+    for (const v of shown) {
+      const b = languageBucket(v.locale);
+      map.set(b, (map.get(b) ?? 0) + 1);
+    }
+    return map;
+  }, [shown]);
   const recentVoices = useMemo(
     () => recent
       .map((id) => voices.find((v) => v.id === id))
@@ -336,7 +345,7 @@ export function VoicesPage() {
               <div key={g.bucket}>
                 <div className="flex items-center justify-between border-b border-line bg-surface-2 px-4 py-2">
                   <span className="text-[11px] font-semibold">{g.label}</span>
-                  <span className="text-[10.5px] text-faint num">{g.voices.length} 个</span>
+                  <span className="text-[10.5px] text-faint num">{bucketTotals.get(g.bucket) ?? g.voices.length} 个</span>
                 </div>
                 <div className="divide-y divide-line">
                   {g.voices.map((v) => (

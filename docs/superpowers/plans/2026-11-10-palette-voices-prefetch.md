@@ -47,7 +47,7 @@
 - 修改：`index.html`
 - 创建：`src/lib/palette.test.ts`、`src/types/models.test.ts`
 
-- [ ] **步骤 1：编写失败测试**
+- [x] **步骤 1：编写失败测试**
 
 创建 `src/lib/palette.test.ts`：
 
@@ -112,12 +112,12 @@ describe('normalizeSynth', () => {
 });
 ```
 
-- [ ] **步骤 2：运行测试验证失败**
+- [x] **步骤 2：运行测试验证失败**
 
 运行：`npm test -- src/lib/palette.test.ts src/types/models.test.ts`
 预期：FAIL，报错 `Failed to resolve import "./palette"` 或缺少 `palette` 属性。
 
-- [ ] **步骤 3：实现调色板元数据**
+- [x] **步骤 3：实现调色板元数据**
 
 创建 `src/lib/palette.ts`：
 
@@ -148,7 +148,7 @@ export function applyPalette(palette: PaletteId, root: HTMLElement = document.do
 }
 ```
 
-- [ ] **步骤 4：扩展数据模型**
+- [x] **步骤 4：扩展数据模型**
 
 在 `src/types/models.ts` 中：
 
@@ -207,7 +207,7 @@ import { isPaletteId } from '../lib/palette';
 style: typeof o.style === 'string' ? o.style : '',
 ```
 
-- [ ] **步骤 5：主题镜像与首屏应用**
+- [x] **步骤 5：主题镜像与首屏应用**
 
 修改 `src/lib/theme.ts`，把 `mirrorTheme` 替换为：
 
@@ -292,17 +292,17 @@ export function ThemeController() {
 </script>
 ```
 
-- [ ] **步骤 6：运行测试验证通过**
+- [x] **步骤 6：运行测试验证通过**
 
 运行：`npm test -- src/lib/palette.test.ts src/types/models.test.ts`
 预期：PASS。
 
-- [ ] **步骤 7：类型检查**
+- [x] **步骤 7：类型检查**
 
 运行：`npx tsc --noEmit`
 预期：通过（若 `configTransfer.test.ts` 等因 `DEFAULT_SYNTH` 新增字段报错，属于类型补齐，下一步统一修复）。
 
-- [ ] **步骤 8：Commit**
+- [x] **步骤 8：Commit**
 
 ```bash
 git add src/types/models.ts src/lib/palette.ts src/lib/palette.test.ts src/types/models.test.ts src/lib/theme.ts src/store/settingsStore.ts src/components/ThemeController.tsx index.html
@@ -318,7 +318,7 @@ git commit -m "feat(theme): 增加配色数据模型与主题应用"
 - 修改：`src/App.tsx:1-11`、`src/App.tsx:70-190`、`src/App.tsx:330-345`
 - 修改：`src/pages/SettingsPage.tsx`（外观区）
 
-- [ ] **步骤 1：增加配色令牌**
+- [x] **步骤 1：增加配色令牌**
 
 在 `src/index.css` 的 `.dark { ... }` 块之后加入：
 
@@ -352,7 +352,7 @@ html[data-palette='walnut']:not(.dark) {
 }
 ```
 
-- [ ] **步骤 2：在 App.tsx 增加 PaletteSwitch**
+- [x] **步骤 2：在 App.tsx 增加 PaletteSwitch**
 
 `src/App.tsx` 顶部补充导入：
 
@@ -476,7 +476,7 @@ function PaletteSwitch({ rail }: { rail: boolean }) {
   <ThemeSwitch rail={rail} />
 ```
 
-- [ ] **步骤 3：设置页增加配色行**
+- [x] **步骤 3：设置页增加配色行**
 
 在 `src/pages/SettingsPage.tsx` 中导入：
 
@@ -516,17 +516,17 @@ import { PALETTES } from '@/lib/palette';
 />
 ```
 
-- [ ] **步骤 4：运行构建验证**
+- [x] **步骤 4：运行构建验证**
 
 运行：`npm run build`
 预期：通过。
 
-- [ ] **步骤 5：人工检查**
+- [x] **步骤 5：人工检查**
 
 运行：`npm run tauri dev`，进入任意页面。
 预期：侧栏出现「墨绿」按钮，切换三套配色后主色/选中态同步变化；刷新后保持；切深色/浅色只改明暗。
 
-- [ ] **步骤 6：Commit**
+- [x] **步骤 6：Commit**
 
 ```bash
 git add src/index.css src/App.tsx src/pages/SettingsPage.tsx
@@ -540,7 +540,7 @@ git commit -m "feat(theme): 三套配色令牌与侧栏配色入口"
 **文件：**
 - 修改：`src/components/settings/DataSection.tsx`
 
-- [ ] **步骤 1：补充导入与状态**
+- [x] **步骤 1：补充导入与状态**
 
 `src/components/settings/DataSection.tsx` 顶部：
 
@@ -603,7 +603,7 @@ async function onClearLogs(): Promise<void> {
 }
 ```
 
-- [ ] **步骤 2：渲染数据库卡片与危险操作**
+- [x] **步骤 2：渲染数据库卡片与危险操作**
 
 在「配置迁移」卡片之后、`</section>` 之前加入：
 
@@ -654,17 +654,17 @@ async function onClearLogs(): Promise<void> {
 </div>
 ```
 
-- [ ] **步骤 3：构建验证**
+- [x] **步骤 3：构建验证**
 
 运行：`npm run build`
 预期：通过。
 
-- [ ] **步骤 4：人工检查**
+- [x] **步骤 4：人工检查**
 
 运行：`npm run tauri dev`，进入 设置 → 数据。
 预期：显示真实书数与章节数；清空日志需二次确认，确认后日志页为空。
 
-- [ ] **步骤 5：Commit**
+- [x] **步骤 5：Commit**
 
 ```bash
 git add src/components/settings/DataSection.tsx
@@ -680,7 +680,7 @@ git commit -m "feat(settings): 数据页增加数据库统计与清空日志"
 - 修改：`src/pages/SettingsPage.tsx:150-260`
 - 修改：`src/pages/ReadPage.tsx:135-145`
 
-- [ ] **步骤 1：poolDeps 使用 synth.style**
+- [x] **步骤 1：poolDeps 使用 synth.style**
 
 `src/store/poolDeps.ts`：
 
@@ -691,7 +691,7 @@ export function currentPrefs(): SynthPrefs {
 }
 ```
 
-- [ ] **步骤 2：设置页试听与风格行**
+- [x] **步骤 2：设置页试听与风格行**
 
 `src/pages/SettingsPage.tsx` 试听调用改为：
 
@@ -737,7 +737,7 @@ const voiceStyles = voices.find((v) => v.id === synth.voice)?.styles ?? [];
 onValueChange={(v) => void saveSynth({ ...synth, voice: v === 'node-default' ? '' : v, style: '' })}
 ```
 
-- [ ] **步骤 3：朗读页音色变更清空风格**
+- [x] **步骤 3：朗读页音色变更清空风格**
 
 `src/pages/ReadPage.tsx`：
 
@@ -745,7 +745,7 @@ onValueChange={(v) => void saveSynth({ ...synth, voice: v === 'node-default' ? '
 onValueChange={(v) => void saveSynth({ ...synth, voice: v === 'node-default' ? '' : v, style: '' })}
 ```
 
-- [ ] **步骤 4：运行测试与构建**
+- [x] **步骤 4：运行测试与构建**
 
 运行：`npm test -- src/lib/configTransfer.test.ts src/types/models.test.ts`
 预期：PASS。
@@ -753,7 +753,7 @@ onValueChange={(v) => void saveSynth({ ...synth, voice: v === 'node-default' ? '
 运行：`npm run build`
 预期：通过。
 
-- [ ] **步骤 5：Commit**
+- [x] **步骤 5：Commit**
 
 ```bash
 git add src/store/poolDeps.ts src/pages/SettingsPage.tsx src/pages/ReadPage.tsx
@@ -769,7 +769,7 @@ git commit -m "feat(synth): 音色风格贯通设置与朗读"
 - 创建：`src/lib/voiceFilter.ts`
 - 创建：`src/lib/voiceFilter.test.ts`
 
-- [ ] **步骤 1：编写失败测试**
+- [x] **步骤 1：编写失败测试**
 
 创建 `src/lib/voiceFilter.test.ts`：
 
@@ -855,12 +855,12 @@ describe('recent voices', () => {
 });
 ```
 
-- [ ] **步骤 2：运行测试验证失败**
+- [x] **步骤 2：运行测试验证失败**
 
 运行：`npm test -- src/lib/voiceFilter.test.ts`
 预期：FAIL，报错 `Failed to resolve import "./voiceFilter"`。
 
-- [ ] **步骤 3：实现 voiceFilter**
+- [x] **步骤 3：实现 voiceFilter**
 
 创建 `src/lib/voiceFilter.ts`：
 
@@ -973,7 +973,7 @@ export function pushRecentVoice(storage: WritableStorage, id: string): string[] 
 }
 ```
 
-- [ ] **步骤 4：风格中文名**
+- [x] **步骤 4：风格中文名**
 
 在 `src/lib/voices.ts` 末尾加入：
 
@@ -1012,12 +1012,12 @@ export function styleDisplayName(style: string): string {
 }
 ```
 
-- [ ] **步骤 5：运行测试验证通过**
+- [x] **步骤 5：运行测试验证通过**
 
 运行：`npm test -- src/lib/voiceFilter.test.ts src/lib/voices.test.ts`
 预期：PASS。
 
-- [ ] **步骤 6：Commit**
+- [x] **步骤 6：Commit**
 
 ```bash
 git add src/lib/voiceFilter.ts src/lib/voiceFilter.test.ts src/lib/voices.ts
@@ -1031,7 +1031,7 @@ git commit -m "feat(voices): 音色过滤、分组与最近常用纯函数"
 **文件：**
 - 重写：`src/pages/VoicesPage.tsx`
 
-- [ ] **步骤 1：编写新页面**
+- [x] **步骤 1：编写新页面**
 
 用以下内容完整替换 `src/pages/VoicesPage.tsx`：
 
@@ -1410,12 +1410,12 @@ export function VoicesPage() {
 }
 ```
 
-- [ ] **步骤 2：运行构建**
+- [x] **步骤 2：运行构建**
 
 运行：`npm run build`
 预期：通过。若报 `Pagination` 未使用等错误，确认旧导入已全部删除。
 
-- [ ] **步骤 3：人工检查**
+- [x] **步骤 3：人工检查**
 
 运行：`npm run tauri dev`，进入音色页。
 预期：
@@ -1425,7 +1425,7 @@ export function VoicesPage() {
 - 设为默认后该音色出现在最近常用，刷新后仍在。
 - 窄窗口（960px）下不横向溢出。
 
-- [ ] **步骤 4：Commit**
+- [x] **步骤 4：Commit**
 
 ```bash
 git add src/pages/VoicesPage.tsx
@@ -1440,7 +1440,7 @@ git commit -m "feat(voices): 重做音色页为搜索优先列表"
 - 修改：`src/lib/split.ts:1`
 - 修改：`src/lib/split.test.ts`
 
-- [ ] **步骤 1：补充失败测试**
+- [x] **步骤 1：补充失败测试**
 
 在 `src/lib/split.test.ts` 末尾加入：
 
@@ -1461,12 +1461,12 @@ it('默认按句号切分且不超长', () => {
 });
 ```
 
-- [ ] **步骤 2：运行测试验证失败**
+- [x] **步骤 2：运行测试验证失败**
 
 运行：`npm test -- src/lib/split.test.ts`
 预期：FAIL，`expected ... to be less than or equal to 150`。
 
-- [ ] **步骤 3：修改默认值**
+- [x] **步骤 3：修改默认值**
 
 `src/lib/split.ts` 第一行：
 
@@ -1474,12 +1474,12 @@ it('默认按句号切分且不超长', () => {
 export function splitForReading(raw: string, maxLen = 150): string[] {
 ```
 
-- [ ] **步骤 4：运行测试验证通过**
+- [x] **步骤 4：运行测试验证通过**
 
 运行：`npm test -- src/lib/split.test.ts`
 预期：PASS（显式传 800 的旧用例保持不变）。
 
-- [ ] **步骤 5：Commit**
+- [x] **步骤 5：Commit**
 
 ```bash
 git add src/lib/split.ts src/lib/split.test.ts
@@ -1494,7 +1494,7 @@ git commit -m "fix(synth): 朗读分段上限降至 150 字以兼容 LEGACY 节�
 - 创建：`src/lib/prefetch.ts`
 - 创建：`src/lib/prefetch.test.ts`
 
-- [ ] **步骤 1：编写失败测试**
+- [x] **步骤 1：编写失败测试**
 
 创建 `src/lib/prefetch.test.ts`：
 
@@ -1575,12 +1575,12 @@ describe('PrefetchWindow', () => {
 });
 ```
 
-- [ ] **步骤 2：运行测试验证失败**
+- [x] **步骤 2：运行测试验证失败**
 
 运行：`npm test -- src/lib/prefetch.test.ts`
 预期：FAIL，`Failed to resolve import "./prefetch"`。
 
-- [ ] **步骤 3：实现 PrefetchWindow**
+- [x] **步骤 3：实现 PrefetchWindow**
 
 创建 `src/lib/prefetch.ts`：
 
@@ -1666,12 +1666,12 @@ export class PrefetchWindow {
 }
 ```
 
-- [ ] **步骤 4：运行测试验证通过**
+- [x] **步骤 4：运行测试验证通过**
 
 运行：`npm test -- src/lib/prefetch.test.ts`
 预期：PASS。
 
-- [ ] **步骤 5：Commit**
+- [x] **步骤 5：Commit**
 
 ```bash
 git add src/lib/prefetch.ts src/lib/prefetch.test.ts
@@ -1685,7 +1685,7 @@ git commit -m "feat(player): 增加可取消的预取窗口"
 **文件：**
 - 修改：`src/store/playerStore.ts:1-70`、`src/store/playerStore.ts:124-230`
 
-- [ ] **步骤 1：替换模块级预取状态**
+- [x] **步骤 1：替换模块级预取状态**
 
 删除：
 
@@ -1721,7 +1721,7 @@ const prefetchWindow = new PrefetchWindow({
 });
 ```
 
-- [ ] **步骤 2：改写 pump 的取音逻辑**
+- [x] **步骤 2：改写 pump 的取音逻辑**
 
 把 pump 中这段：
 
@@ -1765,7 +1765,7 @@ const prefetchWindow = new PrefetchWindow({
 
 同时把这一段的起点 `let buf: ArrayBuffer | null = null;` 保持不变，外层 `try/catch` 继续负责最终失败处理。
 
-- [ ] **步骤 3：取消时不再写错误**
+- [x] **步骤 3：取消时不再写错误**
 
 pump 的 catch 块：
 
@@ -1801,7 +1801,7 @@ pump 的 catch 块：
   prefetchWindow.clear();
 ```
 
-- [ ] **步骤 4：运行测试与构建**
+- [x] **步骤 4：运行测试与构建**
 
 运行：`npm test -- src/lib/prefetch.test.ts src/lib/split.test.ts`
 预期：PASS。
@@ -1809,7 +1809,7 @@ pump 的 catch 块：
 运行：`npm run build`
 预期：通过。
 
-- [ ] **步骤 5：人工检查**
+- [x] **步骤 5：人工检查**
 
 运行：`npm run tauri dev`，粘贴 300 字以上文本并开始朗读。
 预期：
@@ -1818,7 +1818,7 @@ pump 的 catch 块：
 - 中途停止或点击另一段跳转，不会播放旧音频。
 - 长文本在 LEGACY 节点下合成成功（日志出现成功记录，文本长度超过 312 字）。
 
-- [ ] **步骤 6：Commit**
+- [x] **步骤 6：Commit**
 
 ```bash
 git add src/store/playerStore.ts
@@ -1832,17 +1832,17 @@ git commit -m "feat(player): 播放时窗口预取后续三段"
 **文件：**
 - 修改：`docs/superpowers/plans/2026-11-10-palette-voices-prefetch.md`（勾选进度）
 
-- [ ] **步骤 1：全量测试**
+- [x] **步骤 1：全量测试**
 
 运行：`npm test`
 预期：全部测试文件通过，无失败、无跳过。
 
-- [ ] **步骤 2：生产构建**
+- [x] **步骤 2：生产构建**
 
 运行：`npm run build`
 预期：`tsc` 与 `vite build` 均通过。
 
-- [ ] **步骤 3：真机验收**
+- [x] **步骤 3：真机验收**
 
 运行：`npm run tauri dev`，逐项确认：
 - 侧栏配色切换三套 × 深/浅/跟随系统，刷新保持。
@@ -1851,7 +1851,7 @@ git commit -m "feat(player): 播放时窗口预取后续三段"
 - 连续朗读 10 段以上无合成停顿；312 字以上长文本成功。
 - 960px 与 900px 宽度下布局正常。
 
-- [ ] **步骤 4：关闭进程并检查工作区**
+- [x] **步骤 4：关闭进程并检查工作区**
 
 ```bash
 git status --short
@@ -1859,9 +1859,17 @@ git status --short
 
 预期：只有本轮计划文件（若有未跟踪旧文档，保持原样，不要加入提交）。
 
-- [ ] **步骤 5：Commit**
+- [x] **步骤 5：Commit**
 
 ```bash
 git add docs/superpowers/plans/2026-11-10-palette-voices-prefetch.md
 git commit -m "docs(plan): 勾选配色、数据、音色与预取验收进度"
 ```
+
+---
+
+## 执行记录（2026-11-10）
+
+- 全部 10 个任务已实现，逐任务提交。
+- 真机（`npm run tauri dev` + CDP）验收：三套配色与深/浅互不影响且刷新保持；数据页显示真实书数/章节数与清空日志二次确认；音色页搜索、语言/性别筛选、风格就地展开与设为默认；400+ 字文本按 150 字分段并触发窗口预取（日志连续 4 条成功，单次 5–12 秒）。
+- 计划外修正：`voiceFilter.ts` 增加 `sortVoicesByLanguage`，保证分页切片后中文仍排在最前，分组标题显示该语言总数而非当前切片数；音色行在 960px 宽度下隐藏标签列改为四列布局，消除标签竖排换行。

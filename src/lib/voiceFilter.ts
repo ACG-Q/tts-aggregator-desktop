@@ -3,8 +3,7 @@ import { voiceDisplayName } from './voices';
 
 export type LanguageBucket = 'zh' | 'en' | 'ja' | 'ko' | 'other';
 
-export const LANGUAGE_OPTIONS: { value: LanguageBucket | 'all'; label: string }[] = [
-  { value: 'all', label: '全部' },
+export const LANGUAGE_OPTIONS: { value: LanguageBucket | 'all'; label: string }[] = [  { value: 'all', label: '全部' },
   { value: 'zh', label: '中文' },
   { value: 'en', label: '英语' },
   { value: 'ja', label: '日语' },
@@ -49,6 +48,18 @@ export interface VoiceGroup {
   bucket: LanguageBucket;
   label: string;
   voices: Voice[];
+}
+const BUCKET_ORDER: Record<LanguageBucket, number> = {
+  zh: 0, en: 1, ja: 2, ko: 3, other: 4,
+};
+
+/** 按语言优先级（中文在前）再按名称排序，保证分页切片时中文不会被挤到后面。 */
+export function sortVoicesByLanguage(voices: Voice[]): Voice[] {
+  return [...voices].sort((a, b) => {
+    const order = BUCKET_ORDER[languageBucket(a.locale)] - BUCKET_ORDER[languageBucket(b.locale)];
+    if (order !== 0) return order;
+    return voiceDisplayName(a).localeCompare(voiceDisplayName(b)) || a.locale.localeCompare(b.locale);
+  });
 }
 
 export function groupByLanguage(voices: Voice[]): VoiceGroup[] {
