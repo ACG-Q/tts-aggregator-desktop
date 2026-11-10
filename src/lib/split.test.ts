@@ -28,4 +28,19 @@ describe('splitForReading', () => {
     expect(splitForReading('a\r\nb')).toEqual(['a', 'b']);
     expect(splitForReading('   ')).toEqual([]);
   });
+
+  it('默认段长不超过 150', () => {
+    const text = 'あ'.repeat(400);
+    const segs = splitForReading(text);
+    expect(segs.length).toBeGreaterThan(1);
+    for (const s of segs) expect(s.length).toBeLessThanOrEqual(150);
+    expect(segs.join('')).toBe(text);
+  });
+
+  it('默认按句号切分且不超长', () => {
+    const text = '这是一句测试文本。'.repeat(40);
+    const segs = splitForReading(text);
+    for (const s of segs) expect(s.length).toBeLessThanOrEqual(150);
+    expect(segs.join('')).toBe(text);
+  });
 });

@@ -1,4 +1,4 @@
-export function splitForReading(raw: string, maxLen = 800): string[] {
+export function splitForReading(raw: string, maxLen = 150): string[] {
   const text = raw.replace(/\r\n/g, '\n').trim();
   if (!text) return [];
   const out: string[] = [];
