@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
 import { cn } from '@/lib/utils';
+import { PALETTES } from '@/lib/palette';
 import { PageHeader } from '@/components/PageHeader';
 import { DataSection } from '@/components/settings/DataSection';
 import { playAudition, stopAudition } from '@/lib/audition';
@@ -292,6 +293,33 @@ export function SettingsPage() {
                             {label}
                             {appPrefs.theme === mode && <Check className="h-3 w-3 text-primary" />}
                           </span>
+                        </button>
+                      ))}
+                    </div>
+                  }
+                />
+                <SetRow
+                  stacked
+                  title="界面配色"
+                  desc="主色系与主题相互独立，配色不会改变明暗。"
+                  control={
+                    <div className="flex flex-wrap gap-2">
+                      {PALETTES.map((p) => (
+                        <button
+                          key={p.id}
+                          type="button"
+                          aria-pressed={appPrefs.palette === p.id}
+                          onClick={() => void saveAppPrefs({ ...appPrefs, palette: p.id })}
+                          className={cn(
+                            'flex items-center gap-2 rounded-[10px] border bg-surface-2 px-3 py-2 text-[11px] transition-colors',
+                            appPrefs.palette === p.id
+                              ? 'border-primary text-foreground shadow-[0_0_0_2px_var(--highlight)]'
+                              : 'border-line text-muted-foreground hover:border-line-strong hover:text-foreground',
+                          )}
+                        >
+                          <span className="h-3.5 w-3.5 rounded-full border border-black/10" style={{ background: p.swatch }} />
+                          {p.label}
+                          {appPrefs.palette === p.id && <Check className="h-3 w-3 text-primary" />}
                         </button>
                       ))}
                     </div>

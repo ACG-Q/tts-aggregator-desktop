@@ -1,18 +1,19 @@
 import { useEffect, useRef, useState } from 'react';
 import { HashRouter, NavLink, Route, Routes } from 'react-router-dom';
 import {
-  Check, Headphones, Menu, Monitor, Moon, PanelLeftClose, PanelLeftOpen, Sun,
+  Check, ChevronDown, Headphones, Menu, Monitor, Moon, PanelLeftClose, PanelLeftOpen, Sun,
 } from 'lucide-react';
 import { PlayerDock } from '@/components/player/PlayerDock';
 import { ThemeController } from '@/components/ThemeController';
 import { Toaster } from '@/components/ui/sonner';
 import { cn } from '@/lib/utils';
+import { PALETTES, type PaletteMeta } from '@/lib/palette';
 import { NAV_ITEMS, type NavItem } from '@/nav';
 import { SIDEBAR_RAIL_THRESHOLD } from '@/lib/sidebar';
 import { usePlayerStore } from '@/store/playerStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import { SIDEBAR_COLLAPSE_THRESHOLD, useSidebarStore } from '@/store/sidebarStore';
-import type { ThemeMode } from '@/types/models';
+import type { PaletteId, ThemeMode } from '@/types/models';
 import { BookDetailPage } from './pages/BookDetailPage';
 import { BooksPage } from './pages/BooksPage';
 import { LogsPage } from './pages/LogsPage';
@@ -70,6 +71,101 @@ function NavRow({ item, rail, onNavigate }: {
         </>
       )}
     </NavLink>
+  );
+}
+
+function PaletteOptions({ onPick, current }: { onPick: (id: PaletteId) => void; current: PaletteId }) {
+  return (
+    <>
+      {PALETTES.map((p: PaletteMeta) => (
+        <button
+          key={p.id}
+          type="button"
+          onClick={() => onPick(p.id)}
+          className={cn(
+            'flex w-full items-center gap-2.5 rounded-md px-2 py-2 text-left transition-colors',
+            current === p.id
+              ? 'bg-primary/10 text-foreground'
+              : 'text-muted-foreground hover:bg-surface-2 hover:text-foreground',
+          )}
+        >
+          <span
+            className="h-3.5 w-3.5 shrink-0 rounded-full border border-black/10"
+            style={{ background: p.swatch }}
+          />
+          <span className="min-w-0">
+            <span className="block text-[11.5px] font-medium">{p.label}</span>
+            <span className="block text-[9.5px] text-faint">{p.hint}</span>
+          </span>
+          {current === p.id && <Check className="ml-auto h-3.5 w-3.5 text-primary" />}
+        </button>
+      ))}
+    </>
+  );
+}
+
+function PaletteSwitch({ rail }: { rail: boolean }) {
+  const appPrefs = useSettingsStore((s) => s.appPrefs);
+  const saveAppPrefs = useSettingsStore((s) => s.saveAppPrefs);
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const current = PALETTES.find((p) => p.id === appPrefs.palette) ?? PALETTES[0];
+
+  useEffect(() => {
+    if (!open) return;
+    const onPointer = (e: PointerEvent) => {
+      if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('pointerdown', onPointer);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('pointerdown', onPointer);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+
+  const pick = (id: PaletteId) => {
+    void saveAppPrefs({ ...appPrefs, palette: id });
+    setOpen(false);
+  };
+
+  return (
+    <div ref={rootRef} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        title={`配色：${current.label}`}
+        aria-label="选择配色"
+        aria-expanded={open}
+        className={cn(
+          'flex w-full items-center gap-2 rounded-[9px] border border-line bg-surface-2 text-muted-foreground hover:border-line-strong hover:text-foreground',
+          rail ? 'h-[34px] justify-center' : 'h-[34px] px-2.5',
+        )}
+      >
+        <span
+          className="h-3.5 w-3.5 shrink-0 rounded-full border border-black/10"
+          style={{ background: current.swatch }}
+        />
+        {!rail && <span className="text-[11.5px]">{current.label}</span>}
+        {!rail && <ChevronDown className="ml-auto h-3.5 w-3.5" />}
+      </button>
+      {open && (
+        <div
+          className={cn(
+            'absolute z-[70] rounded-xl border border-line bg-popover p-1.5 shadow-xl',
+            rail
+              ? 'bottom-0 left-[calc(100%+10px)] w-44'
+              : 'bottom-[calc(100%+8px)] left-0 w-full',
+          )}
+        >
+          <div className="px-2 pb-1.5 pt-1 text-[9.5px] uppercase tracking-[0.14em] text-faint">显示配色</div>
+          <PaletteOptions onPick={pick} current={appPrefs.palette} />
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -260,6 +356,7 @@ export default function App() {
           </nav>
 
           <div className={cn('mt-auto flex flex-col gap-2.5 border-t border-line py-3.5', rail ? 'px-3' : 'px-3.5')}>
+            <PaletteSwitch rail={rail} />
             <ThemeSwitch rail={rail} />
             {!mobile && !forceRail && (
               <button
