@@ -30,6 +30,8 @@ export interface Voice {
   gender: string;
   locale: string;
   styles: string[] | null;
+  nameZh?: string;
+  introZh?: string;
 }
 
 export interface SynthPrefs { voice: string; rate: number; pitch: number; style: string }

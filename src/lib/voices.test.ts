@@ -19,6 +19,12 @@ describe('voiceDisplayName（安卓 Voice.displayName 移植）', () => {
     expect(voiceDisplayName({ id: 'zh-CN-XiaoxiaoNeural', name: '', localName: '' }))
       .toBe('zh-CN-XiaoxiaoNeural');
   });
+
+  it('nameZh 优先于 localName 与映射表', () => {
+    expect(voiceDisplayName({
+      id: 'zh-CN-XiaoxiaoNeural', name: 'Xiaoxiao Dragon HD', localName: '晓晓', nameZh: '晓晓（内置）',
+    })).toBe('晓晓（内置）');
+  });
 });
 
 describe('parseVoices', () => {
@@ -36,5 +42,14 @@ describe('parseVoices', () => {
 
   it('非数组输入返回空', () => {
     expect(parseVoices({ error: true })).toEqual([]);
+  });
+
+  it('解析内置中文名与简介', () => {
+    const [v] = parseVoices([
+      { short_name: 'zh-CN-XiaoxiaoNeural', display_name: 'Xiaoxiao', name_zh: '晓晓', intro_zh: '普通话女声。' },
+      { short_name: 'x', display_name: 'X' },
+    ]);
+    expect(v).toMatchObject({ nameZh: '晓晓', introZh: '普通话女声。' });
+    expect(parseVoices([{ short_name: 'x' }])[0].nameZh).toBeUndefined();
   });
 });

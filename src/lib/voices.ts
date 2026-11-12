@@ -19,7 +19,8 @@ const VOICE_SERIES_ZH: Record<string, string> = {
   HighQuality: '高品质', Narrator: '旁白', Reader: '朗读', Mini: '迷你版',
 };
 
-export function voiceDisplayName(v: Pick<Voice, 'id' | 'name' | 'localName'>): string {
+export function voiceDisplayName(v: Pick<Voice, 'id' | 'name' | 'localName' | 'nameZh'>): string {
+  if (v.nameZh) return v.nameZh;
   const raw = v.localName || v.name;
   if (!raw) return v.id;
   let base = raw;
@@ -43,6 +44,12 @@ export function parseVoices(data: unknown): Voice[] {
     const o = item as Record<string, unknown>;
     const id = typeof o.short_name === 'string' ? o.short_name : '';
     if (!id) continue;
+    const nameZh = typeof o.name_zh === 'string'
+      ? o.name_zh
+      : (typeof o.nameZh === 'string' ? o.nameZh : undefined);
+    const introZh = typeof o.intro_zh === 'string'
+      ? o.intro_zh
+      : (typeof o.introZh === 'string' ? o.introZh : undefined);
     out.push({
       id,
       name: typeof o.display_name === 'string' ? o.display_name : '',
@@ -50,6 +57,8 @@ export function parseVoices(data: unknown): Voice[] {
       gender: typeof o.gender === 'string' ? o.gender : '',
       locale: typeof o.locale === 'string' ? o.locale : '',
       styles: Array.isArray(o.style_list) ? o.style_list.map(String) : null,
+      nameZh,
+      introZh,
     });
   }
   return out;
