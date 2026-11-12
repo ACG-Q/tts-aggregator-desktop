@@ -1,4 +1,5 @@
 pub mod http;
+pub mod mdns;
 pub mod protocol;
 
 pub fn random_hex(bytes: usize) -> String {
