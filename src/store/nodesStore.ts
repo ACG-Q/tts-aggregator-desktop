@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { mapLimit } from '../lib/async';
 import { newId, normalizeBaseUrl, type NodeSource, type TtsNode } from '../types/models';
 import { deps } from './deps';
+import { mergeNodes, type SyncedNode, type SyncStats } from '../lib/lanSync';
 import { useSettingsStore } from './settingsStore';
 
 interface NodesState {
@@ -17,6 +18,7 @@ interface NodesState {
   update(node: TtsNode, origBaseUrl?: string): Promise<void>;
   remove(ids: string[]): Promise<void>;
   setDisabled(ids: string[], disabled: boolean): Promise<void>;
+  mergeSynced(remote: SyncedNode[]): Promise<SyncStats>;
 }
 
 export const useNodesStore = create<NodesState>((set, get) => ({
@@ -107,5 +109,17 @@ export const useNodesStore = create<NodesState>((set, get) => ({
   async setDisabled(ids, disabled) {
     await deps().nodes.setDisabled(ids, disabled);
     await get().load();
+  },
+
+  async mergeSynced(remote) {
+    if (remote.length === 0) return { added: 0, updated: 0, skipped: 0, total: 0 };
+    const before = get().nodes;
+    const { nodes, result } = mergeNodes(before, remote);
+    const known = new Map(before.map((n) => [n.id, n]));
+    for (const node of nodes) {
+      if (known.get(node.id) !== node) await deps().nodes.upsert(node);
+    }
+    await get().load();
+    return result;
   },
 }));
