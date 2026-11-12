@@ -45,6 +45,7 @@ function VoiceRow({ v, isDefault, defaultStyle, auditioningKey, onAudition, onSe
   const styles = v.styles ?? [];
   const busy = auditioningKey === `${v.id}:${style}`;
   const hasStyles = styles.length > 0;
+  const hasIntro = Boolean(v.introZh);
 
   return (
     <div className="px-4 py-3 transition-colors hover:bg-surface-2">
@@ -94,49 +95,56 @@ function VoiceRow({ v, isDefault, defaultStyle, auditioningKey, onAudition, onSe
           type="button"
           aria-label={open ? '收起风格' : '展开风格'}
           aria-expanded={open}
-          disabled={!hasStyles}
+          disabled={!hasStyles && !hasIntro}
           onClick={() => setOpen((x) => !x)}
           className={cn(
             'grid h-6 w-6 place-items-center rounded-md text-faint hover:bg-surface-3 hover:text-foreground',
-            !hasStyles && 'invisible',
+            !hasStyles && !hasIntro && 'invisible',
           )}
         >
           <ChevronDown className={cn('h-4 w-4 transition-transform', open && 'rotate-180')} />
         </button>
       </div>
 
-      {open && hasStyles && (
-        <div className="mt-2.5 flex flex-wrap items-center gap-1.5 border-t border-line pl-0 pt-2.5 md:pl-12">
-          <span className="text-[10px] text-faint">风格</span>
-          {['', ...styles].map((s) => (
-            <button
-              key={s || 'default'}
-              type="button"
-              aria-pressed={style === s}
-              onClick={() => {
-                setStyle(s);
-                onAudition(s);
-              }}
-              className={cn(
-                'inline-flex h-[24px] items-center rounded-full border px-2 text-[10.5px] transition-colors',
-                style === s
-                  ? 'border-primary bg-primary/10 text-primary'
-                  : 'border-line bg-surface-2 text-muted-foreground hover:border-line-strong hover:text-foreground',
-              )}
-            >
-              {s ? styleDisplayName(s) : '默认'}
-              {style === s && <Check className="ml-1 h-3 w-3" />}
-            </button>
-          ))}
-          <Button
-            variant="ghost"
-            size="sm"
-            className="ml-auto"
-            onClick={() => onSetDefault(style)}
-          >
-            <Volume2 className="mr-1 h-3.5 w-3.5" />
-            设为默认{style ? `（${styleDisplayName(style)}）` : ''}
-          </Button>
+      {open && (hasStyles || hasIntro) && (
+        <div className="mt-2.5 border-t border-line pl-0 pt-2.5 md:pl-12">
+          {hasIntro && (
+            <p className="mb-2 text-[11.5px] leading-relaxed text-muted-foreground">{v.introZh}</p>
+          )}
+          {hasStyles && (
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-[10px] text-faint">风格</span>
+              {['', ...styles].map((s) => (
+                <button
+                  key={s || 'default'}
+                  type="button"
+                  aria-pressed={style === s}
+                  onClick={() => {
+                    setStyle(s);
+                    onAudition(s);
+                  }}
+                  className={cn(
+                    'inline-flex h-[24px] items-center rounded-full border px-2 text-[10.5px] transition-colors',
+                    style === s
+                      ? 'border-primary bg-primary/10 text-primary'
+                      : 'border-line bg-surface-2 text-muted-foreground hover:border-line-strong hover:text-foreground',
+                  )}
+                >
+                  {s ? styleDisplayName(s) : '默认'}
+                  {style === s && <Check className="ml-1 h-3 w-3" />}
+                </button>
+              ))}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="ml-auto"
+                onClick={() => onSetDefault(style)}
+              >
+                <Volume2 className="mr-1 h-3.5 w-3.5" />
+                设为默认{style ? `（${styleDisplayName(style)}）` : ''}
+              </Button>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -144,7 +152,7 @@ function VoiceRow({ v, isDefault, defaultStyle, auditioningKey, onAudition, onSe
 }
 
 export function VoicesPage() {
-  const { voices, loading, error, load } = useVoicesStore();
+  const { voices, loading, error, load, source } = useVoicesStore();
   const { synth, saveSynth } = useSettingsStore();
   const [q, setQ] = useState('');
   const [language, setLanguage] = useState<LanguageBucket | 'all'>('all');
@@ -276,7 +284,9 @@ export function VoicesPage() {
               </button>
             ))}
           </div>
-          <span className="text-[11px] text-faint num">{shown.length} 个</span>
+          <span className="text-[11px] text-faint num">
+            {shown.length} 个{source === 'builtin' ? ' · 内置库' : ''}
+          </span>
         </div>
       </div>
 
