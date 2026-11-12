@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useState } from 'react';
 import { Check, Pause, Play, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,8 @@ import { cn } from '@/lib/utils';
 import { PALETTES } from '@/lib/palette';
 import { PageHeader } from '@/components/PageHeader';
 import { DataSection } from '@/components/settings/DataSection';
+import { LanSyncSection } from '@/components/settings/LanSyncSection';
+import { SetCard, SetRow, Switch } from '@/components/settings/SetBits';
 import { playAudition, stopAudition } from '@/lib/audition';
 import { styleDisplayName, voiceDisplayName } from '@/lib/voices';
 import { synthesizeText } from '@/store/poolDeps';
@@ -24,74 +26,15 @@ const THEME_OPTIONS: [ThemeMode, string][] = [
   ['dark', '深色'], ['light', '浅色'], ['system', '跟随系统'],
 ];
 
-type SectionKey = 'voice' | 'appearance' | 'schedule' | 'data';
+type SectionKey = 'voice' | 'appearance' | 'schedule' | 'data' | 'sync';
 
 const SECTIONS: [SectionKey, string, string][] = [
   ['voice', '语音参数', '默认音色、语速与音调'],
   ['appearance', '外观与播放', '主题与默认播放速度'],
   ['schedule', '调度与探测', '失败冷却与探测行为'],
   ['data', '数据', '导出与导入配置'],
+  ['sync', '局域网同步', '与手机双向合并节点'],
 ];
-
-function Switch({ checked, onCheckedChange, label }: {
-  checked: boolean;
-  onCheckedChange: (v: boolean) => void;
-  label: string;
-}) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      aria-label={label}
-      onClick={() => onCheckedChange(!checked)}
-      className={cn(
-        'relative h-[22px] w-[38px] shrink-0 rounded-full border transition-colors',
-        checked ? 'border-primary/60 bg-primary/80' : 'border-line-strong bg-surface-3',
-      )}
-    >
-      <span
-        className={cn(
-          'absolute top-1/2 h-4 w-4 -translate-y-1/2 rounded-full bg-white shadow-sm transition-[left]',
-          checked ? 'left-[17px]' : 'left-[3px]',
-        )}
-      />
-    </button>
-  );
-}
-
-function SetCard({ title, children, danger }: { title: string; children: ReactNode; danger?: boolean }) {
-  return (
-    <div className="mb-3.5 rounded-[13px] border border-line bg-card px-[18px] py-1">
-      <div className={cn('pb-0.5 pt-3.5 text-[12px] font-semibold', danger && 'text-destructive')}>
-        {title}
-      </div>
-      {children}
-    </div>
-  );
-}
-
-function SetRow({ title, desc, control, stacked }: {
-  title: string;
-  desc: string;
-  control: ReactNode;
-  stacked?: boolean;
-}) {
-  return (
-    <div
-      className={cn(
-        'flex gap-6 border-t border-line py-[15px] first-of-type:border-t-0',
-        stacked ? 'flex-col' : 'items-center justify-between',
-      )}
-    >
-      <div className="min-w-0">
-        <b className="block text-[12.5px] font-semibold">{title}</b>
-        <span className="mt-[3px] block text-[10.5px] text-muted-foreground">{desc}</span>
-      </div>
-      <div className={cn('flex shrink-0 items-center gap-2.5', stacked && 'w-full')}>{control}</div>
-    </div>
-  );
-}
 
 function ThemePreview({ mode }: { mode: ThemeMode }) {
   const bg = mode === 'dark' ? '#1a1e18' : mode === 'light' ? '#f3f1e9' : 'linear-gradient(90deg,#1a1e18 50%,#f3f1e9 50%)';
@@ -438,6 +381,8 @@ export function SettingsPage() {
           )}
 
           {active === 'data' && <DataSection />}
+
+          {active === 'sync' && <LanSyncSection />}
 
         </div>
       </div>
