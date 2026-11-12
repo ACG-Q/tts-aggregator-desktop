@@ -1,5 +1,7 @@
 use std::net::{Ipv4Addr, UdpSocket};
 
+mod lan_sync;
+
 pub(crate) fn local_ipv4() -> String {
     UdpSocket::bind((Ipv4Addr::UNSPECIFIED, 0))
         .and_then(|s| s.connect(("223.5.5.5", 80)).and_then(|_| s.local_addr()))
