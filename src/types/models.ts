@@ -41,7 +41,6 @@ export interface PoolConfig {
   groupCursor: number;
   manualFailCount: number;
 }
-export interface ShareConfig { enabled: boolean; port: number; token: string; localhostOnly: boolean }
 export type ThemeMode = 'system' | 'light' | 'dark';
 export type PaletteId = 'ink' | 'celadon' | 'walnut';
 
@@ -174,10 +173,6 @@ export function normalizeSynth(raw: unknown): SynthSettings {
 export function newId(): string {
   const c = globalThis.crypto as Crypto | undefined;
   return c?.randomUUID?.() ?? `id-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-}
-
-export function defaultShare(port = 8787): ShareConfig {
-  return { enabled: false, port, token: newId(), localhostOnly: false };
 }
 
 export function isCoolingDown(node: TtsNode, now: number): boolean {

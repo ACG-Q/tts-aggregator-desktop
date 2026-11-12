@@ -1,6 +1,5 @@
-import { useEffect, useState, type ReactNode } from 'react';
-import { Check, Copy, Pause, Play, RefreshCw } from 'lucide-react';
-import { invoke } from '@tauri-apps/api/core';
+import { useState, type ReactNode } from 'react';
+import { Check, Pause, Play, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,7 +15,6 @@ import { synthesizeText } from '@/store/poolDeps';
 import { useNodesStore } from '@/store/nodesStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import { useVoicesStore } from '@/store/voicesStore';
-import { notifyShare } from '@/store/shareSync';
 import {
   COOLDOWN_MINUTES_OPTIONS, FAIL_THRESHOLD_OPTIONS, SLEEP_MINUTES_OPTIONS,
   type ThemeMode,
@@ -26,14 +24,13 @@ const THEME_OPTIONS: [ThemeMode, string][] = [
   ['dark', '深色'], ['light', '浅色'], ['system', '跟随系统'],
 ];
 
-type SectionKey = 'voice' | 'appearance' | 'schedule' | 'data' | 'share';
+type SectionKey = 'voice' | 'appearance' | 'schedule' | 'data';
 
 const SECTIONS: [SectionKey, string, string][] = [
   ['voice', '语音参数', '默认音色、语速与音调'],
   ['appearance', '外观与播放', '主题与默认播放速度'],
   ['schedule', '调度与探测', '失败冷却与探测行为'],
   ['data', '数据', '导出与导入配置'],
-  ['share', '局域网分享', '让同网设备拉取节点'],
 ];
 
 function Switch({ checked, onCheckedChange, label }: {
@@ -113,40 +110,12 @@ function ThemePreview({ mode }: { mode: ThemeMode }) {
 }
 
 export function SettingsPage() {
-  const { synth, saveSynth, appPrefs, saveAppPrefs, share, saveShare } = useSettingsStore();
+  const { synth, saveSynth, appPrefs, saveAppPrefs } = useSettingsStore();
   const { voices } = useVoicesStore();
   const probing = useNodesStore((s) => s.probing);
-  const [copied, setCopied] = useState(false);
-  const [ip, setIp] = useState('');
-  const [running, setRunning] = useState(false);
   const [active, setActive] = useState<SectionKey>('voice');
   const [auditioning, setAuditioning] = useState(false);
   const voiceStyles = voices.find((v) => v.id === synth.voice)?.styles ?? [];
-
-  useEffect(() => {
-    void invoke<string>('share_local_ip').then(setIp).catch(() => setIp('127.0.0.1'));
-    void invoke<boolean>('share_status').then(setRunning).catch(() => setRunning(false));
-  }, []);
-
-  async function toggleShare(): Promise<void> {
-    try {
-      if (running) {
-        await invoke('share_stop');
-        setRunning(false);
-      } else {
-        await invoke('share_start', { port: share.port, token: share.token });
-        await notifyShare();
-        setRunning(true);
-      }
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : String(e));
-    }
-  }
-
-  function shareUrl(): string {
-    const host = share.localhostOnly ? '127.0.0.1' : ip || '127.0.0.1';
-    return `http://${host}:${share.port}/nodes.json?token=${share.token}`;
-  }
 
   async function audition(): Promise<void> {
     if (auditioning) {
@@ -470,84 +439,6 @@ export function SettingsPage() {
 
           {active === 'data' && <DataSection />}
 
-          {active === 'share' && (
-            <section>
-              <div className="mb-4">
-                <h2 className="text-[17px] font-semibold tracking-[-0.01em]">局域网分享</h2>
-                <p className="mt-1 text-[11.5px] text-muted-foreground">同一局域网的设备可拉取节点列表（只读，需要 token）。</p>
-              </div>
-              <SetCard title="分享服务">
-                <SetRow
-                  title="服务状态"
-                  desc={running ? `当前监听 0.0.0.0:${share.port}` : '当前未开启。'}
-                  control={
-                    <>
-                      <span className={cn(
-                        'inline-flex h-6 items-center gap-1.5 rounded-full border px-2.5 text-[10.5px]',
-                        running
-                          ? 'border-success/25 bg-success/12 text-success'
-                          : 'border-line bg-surface-2 text-faint',
-                      )}>
-                        <span className={cn('h-1.5 w-1.5 rounded-full', running ? 'bg-success' : 'bg-faint')} />
-                        {running ? '分享中' : '未开启'}
-                      </span>
-                      <Button size="sm" variant={running ? 'destructive' : 'default'} onClick={() => void toggleShare()}>
-                        {running ? '停止分享' : '开启分享'}
-                      </Button>
-                    </>
-                  }
-                />
-                <SetRow
-                  title="监听端口"
-                  desc="默认 8787，修改后需重新启动分享。"
-                  control={
-                    <Input type="number" min={1} max={65535} className="w-[100px]"
-                      value={share.port}
-                      onChange={(e) => void saveShare({ ...share, port: Number(e.target.value) || 8787 })} />
-                  }
-                />
-                <SetRow
-                  title="仅本机访问"
-                  desc="只允许 127.0.0.1 拉取节点列表。"
-                  control={
-                    <Switch
-                      label="仅本机访问"
-                      checked={share.localhostOnly}
-                      onCheckedChange={(v) => void saveShare({ ...share, localhostOnly: v })}
-                    />
-                  }
-                />
-                <SetRow
-                  title="访问 Token"
-                  desc="重置后，旧地址立即失效。"
-                  control={
-                    <Button variant="outline" onClick={() => void saveShare({ ...share, token: crypto.randomUUID() })}>
-                      <RefreshCw className="mr-1.5 h-4 w-4" />
-                      重置
-                    </Button>
-                  }
-                />
-                <SetRow
-                  stacked
-                  title="分享地址"
-                  desc="在另一台设备上打开即可拉取节点 JSON。"
-                  control={
-                    <div className="flex w-full gap-2">
-                      <Input className="grow font-mono text-[11px]" readOnly value={shareUrl()} onFocus={(e) => e.target.select()} />
-                      <Button variant="outline" onClick={() => {
-                        void navigator.clipboard.writeText(shareUrl());
-                        setCopied(true);
-                        setTimeout(() => setCopied(false), 1500);
-                      }}>
-                        {copied ? <Check className="mr-1 h-4 w-4" /> : <Copy className="mr-1 h-4 w-4" />}
-                        {copied ? '已复制' : '复制'}
-                      </Button>
-                    </div>
-                  }
-                />
-              </SetCard>
-            </section>
-          )}
         </div>
       </div>
     </div>

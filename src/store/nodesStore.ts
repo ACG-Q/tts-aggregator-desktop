@@ -3,7 +3,6 @@ import { mapLimit } from '../lib/async';
 import { newId, normalizeBaseUrl, type NodeSource, type TtsNode } from '../types/models';
 import { deps } from './deps';
 import { useSettingsStore } from './settingsStore';
-import { notifyShare } from './shareSync';
 
 interface NodesState {
   nodes: TtsNode[];
@@ -40,7 +39,6 @@ export const useNodesStore = create<NodesState>((set, get) => ({
     const probed = await deps().api.probe(baseUrl, label, apiKey);
     await deps().nodes.upsert({ ...probed, source });
     await get().load();
-    await notifyShare();
   },
 
   async importRecords(records, source) {
@@ -53,7 +51,6 @@ export const useNodesStore = create<NodesState>((set, get) => ({
       });
     }
     await get().load();
-    await notifyShare();
     await get().probeAll();
   },
 
@@ -89,7 +86,6 @@ export const useNodesStore = create<NodesState>((set, get) => ({
         }
       });
       await get().load();
-      await notifyShare();
     } finally {
       set({ probing: false, probeProgress: null });
     }
@@ -101,18 +97,15 @@ export const useNodesStore = create<NodesState>((set, get) => ({
     }
     await deps().nodes.upsert(node);
     await get().load();
-    await notifyShare();
   },
 
   async remove(ids) {
     await deps().nodes.delete(ids);
     await get().load();
-    await notifyShare();
   },
 
   async setDisabled(ids, disabled) {
     await deps().nodes.setDisabled(ids, disabled);
     await get().load();
-    await notifyShare();
   },
 }));

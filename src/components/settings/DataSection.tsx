@@ -15,7 +15,6 @@ import {
 } from '@/lib/configTransfer';
 import { normalizeBaseUrl } from '@/types/models';
 import { deps } from '@/store/deps';
-import { notifyShare } from '@/store/shareSync';
 import { useLogsStore } from '@/store/logsStore';
 import { useNodesStore } from '@/store/nodesStore';
 import { useSettingsStore } from '@/store/settingsStore';
@@ -120,7 +119,6 @@ export function DataSection() {
       await useNodesStore.getState().load();
       await saveSynth(file.settings.synth);
       await saveAppPrefs(file.settings.appPrefs);
-      await notifyShare();
       void useNodesStore.getState().probeAll();
       toast.success(`已导入 ${file.nodes.length} 个节点并恢复偏好`);
     } catch (e) {

@@ -5,7 +5,6 @@ import './index.css';
 import { createApi } from './lib/api';
 import { createBooksRepo, createLogsRepo, createNodesRepo, createSettingsRepo, openDb } from './lib/db';
 import { setDeps } from './store/deps';
-import { setShareProvider } from './store/shareSync';
 import { useNodesStore } from './store/nodesStore';
 import { useSettingsStore } from './store/settingsStore';
 import { useVoicesStore } from './store/voicesStore';
@@ -55,11 +54,6 @@ async function bootstrap() {
     void useResumeStore.getState().save(snapshot);
   });
   bindMediaSession(usePlayerStore);
-  setShareProvider(() => ({
-    nodes: useNodesStore.getState().nodes,
-    pool: useSettingsStore.getState().pool,
-    share: useSettingsStore.getState().share,
-  }));
   usePlayerStore.getState().setSynth(async (text) => {
     const result = await synthesizeText(text);
     return result.bytes;
