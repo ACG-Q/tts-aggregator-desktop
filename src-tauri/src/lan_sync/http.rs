@@ -88,6 +88,10 @@ async fn sync(State(shared): State<Arc<Shared>>, headers: HeaderMap, body: Bytes
         Ok(Ok(Outcome::Accept { nodes, applied })) => {
             Json(SyncResponse { nodes, applied }).into_response()
         }
+        Ok(Ok(Outcome::Reject)) => {
+            shared.pending.lock().unwrap().take();
+            fail(StatusCode::FORBIDDEN, "rejected")
+        }
         _ => {
             shared.pending.lock().unwrap().take();
             fail(StatusCode::REQUEST_TIMEOUT, "timeout")
@@ -173,6 +177,36 @@ mod tests {
         let base = serve(s).await;
         let status = post_status(&base, "wrong").await;
         assert_eq!(status, 403);
+    }
+
+    #[tokio::test]
+    async fn sync_returns_403_after_user_rejects() {
+        let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<String>();
+        let s = shared("abc", Arc::new(move |p: PendingPayload| {
+            let _ = tx.send(p.request_id);
+        }));
+        let base = serve(s.clone()).await;
+        let call = tokio::spawn(async move { post_status(&base, "abc").await });
+
+        let request_id = rx.recv().await.expect("handler should notify the UI");
+        assert!(resolve_pending(&s, &request_id, false, vec![], 0));
+        assert_eq!(call.await.unwrap(), 403);
+        assert!(s.pending.lock().unwrap().is_none());
+    }
+
+    #[tokio::test]
+    async fn sync_returns_200_after_user_accepts() {
+        let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<String>();
+        let s = shared("abc", Arc::new(move |p: PendingPayload| {
+            let _ = tx.send(p.request_id);
+        }));
+        let base = serve(s.clone()).await;
+        let call = tokio::spawn(async move { post_status(&base, "abc").await });
+
+        let request_id = rx.recv().await.expect("handler should notify the UI");
+        let nodes = vec![SyncedNode::new("https://local.example.com", "本机")];
+        assert!(resolve_pending(&s, &request_id, true, nodes, 1));
+        assert_eq!(call.await.unwrap(), 200);
     }
 
     async fn reqwest_json(url: &str) -> serde_json::Value {
