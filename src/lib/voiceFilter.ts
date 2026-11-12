@@ -40,7 +40,9 @@ export function filterVoices(voices: Voice[], filter: VoiceFilterInput): Voice[]
     if (filter.language !== 'all' && languageBucket(v.locale) !== filter.language) return false;
     if (filter.gender && v.gender !== filter.gender) return false;
     if (!q) return true;
-    return voiceDisplayName(v).toLowerCase().includes(q) || v.id.toLowerCase().includes(q);
+    return voiceDisplayName(v).toLowerCase().includes(q)
+      || v.id.toLowerCase().includes(q)
+      || (v.introZh?.toLowerCase().includes(q) ?? false);
   });
 }
 

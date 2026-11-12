@@ -5,8 +5,11 @@ import {
   sortVoicesByLanguage,
 } from './voiceFilter';
 
-function voice(id: string, name: string, locale: string, gender = 'Female', styles: string[] | null = null): Voice {
-  return { id, name, localName: '', gender, locale, styles };
+function voice(
+  id: string, name: string, locale: string, gender = 'Female',
+  styles: string[] | null = null, extra: Partial<Voice> = {},
+): Voice {
+  return { id, name, localName: '', gender, locale, styles, ...extra };
 }
 
 const VOICES: Voice[] = [
@@ -38,6 +41,15 @@ describe('filterVoices', () => {
       .toBe('zh-CN-XiaoxiaoNeural');
     expect(filterVoices(VOICES, { query: '', language: 'other', gender: '' })[0].id)
       .toBe('de-DE-KatjaNeural');
+  });
+
+  it('搜索命中中文名与简介', () => {
+    const list = [
+      voice('zh-CN-XiaoxiaoNeural', 'Xiaoxiao', 'zh-CN', 'Female', null, { nameZh: '晓晓', introZh: '普通话女声' }),
+      voice('zh-CN-YunxiNeural', 'Yunxi', 'zh-CN', 'Male'),
+    ];
+    expect(filterVoices(list, { query: '晓晓', language: 'all', gender: '' })).toHaveLength(1);
+    expect(filterVoices(list, { query: '普通话', language: 'all', gender: '' })).toHaveLength(1);
   });
 });
 
