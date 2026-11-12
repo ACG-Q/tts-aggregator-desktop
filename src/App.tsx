@@ -4,6 +4,7 @@ import {
   Check, ChevronDown, Headphones, Menu, Monitor, Moon, PanelLeftClose, PanelLeftOpen, Sun,
 } from 'lucide-react';
 import { PlayerDock } from '@/components/player/PlayerDock';
+import { LanSyncRequestDialog } from '@/components/LanSyncRequestDialog';
 import { ThemeController } from '@/components/ThemeController';
 import { Toaster } from '@/components/ui/sonner';
 import { cn } from '@/lib/utils';
@@ -393,6 +394,7 @@ export default function App() {
         </main>
 
         <PlayerDock />
+        <LanSyncRequestDialog />
         <Toaster position="bottom-right" richColors />
       </div>
     </HashRouter>

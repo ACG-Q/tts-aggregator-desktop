@@ -12,7 +12,6 @@ import { useNodesStore } from '@/store/nodesStore';
 export function LanSyncSection() {
   const phase = useLanSyncStore((s) => s.phase);
   const status = useLanSyncStore((s) => s.status);
-  const pending = useLanSyncStore((s) => s.pending);
   const message = useLanSyncStore((s) => s.message);
   const result = useLanSyncStore((s) => s.result);
   const deviceName = useLanSyncStore((s) => s.deviceName);
@@ -20,18 +19,13 @@ export function LanSyncSection() {
   const refresh = useLanSyncStore((s) => s.refresh);
   const stop = useLanSyncStore((s) => s.stop);
   const syncTo = useLanSyncStore((s) => s.syncTo);
-  const accept = useLanSyncStore((s) => s.accept);
-  const reject = useLanSyncStore((s) => s.reject);
-  const bind = useLanSyncStore((s) => s.bind);
   const nodes = useNodesStore((s) => s.nodes);
   const [pairing, setPairing] = useState('');
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     void refresh();
-    const unlisten = bind();
-    return () => { void unlisten.then((fn) => fn()); };
-  }, [bind, refresh]);
+  }, [refresh]);
 
   const running = Boolean(status?.running);
 
@@ -132,21 +126,6 @@ export function LanSyncSection() {
           </>
         )}
       </SetCard>
-
-      {pending && (
-        <SetCard title="待确认的同步请求">
-          <SetRow
-            title={`${pending.from.name} 请求同步`}
-            desc={`将发送 ${pending.nodes.length} 个节点，并接收本机的 ${nodes.length} 个节点。`}
-            control={
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={() => void reject()}>拒绝</Button>
-                <Button onClick={() => void accept()}>确认同步</Button>
-              </div>
-            }
-          />
-        </SetCard>
-      )}
 
       {result && (
         <div className="mb-3.5 rounded-[10px] border border-line bg-card px-4 py-3 text-[11.5px]">
