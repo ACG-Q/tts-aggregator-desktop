@@ -163,10 +163,11 @@ pulsetts://sync?host=192.168.1.20&port=53421&sid=<hex>&name=<urlencoded device n
 
 ```rust
 lan_local_ip() -> String
-lan_sync_start(device_name: String) -> SyncStatus   // 启动 HTTP + mDNS
-lan_sync_stop()                                     // 停止并注销 mDNS
-lan_sync_status() -> SyncStatus
-lan_sync_resolve(request_id: String, accept: bool, nodes: Vec<SyncedNode>) -> ()
+lan_sync_start(device_name: String, nodes: Vec<SyncedNode>) -> SyncStatus
+lan_sync_set_nodes(nodes: Vec<SyncedNode>)            // 节点变化时刷新广播与 ping 计数
+lan_sync_stop()
+lan_sync_status() -> Option<SyncStatus>
+lan_sync_resolve(request_id: String, accept: bool, nodes: Vec<SyncedNode>, applied: usize) -> ()
 ```
 
 - `SyncStatus { running: bool, port: u16, sid: String, local_ip: String }`
