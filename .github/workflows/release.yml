@@ -52,6 +52,7 @@ jobs:
         id: meta
         env:
           VERSION: ${{ steps.version.outputs.name }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           TAG="v${VERSION}"
