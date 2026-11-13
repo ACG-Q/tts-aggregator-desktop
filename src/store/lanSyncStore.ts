@@ -40,7 +40,8 @@ interface LanSyncState {
   bind(): Promise<UnlistenFn>;
 }
 
-const TIMEOUT_MS = 8000;
+/** 覆盖对端 60 秒确认窗口，避免用户稍晚确认时本机先超时。 */
+const TIMEOUT_MS = 70_000;
 
 function errorText(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
