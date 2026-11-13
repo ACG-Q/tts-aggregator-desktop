@@ -1,6 +1,6 @@
 # 桌面端局域网同步「自动允许」实现计划
 
-> **面向 AI 代理的工作者：** 必需子技能：使用 superpowers:subagent-driven-development（推荐）或 superpowers:executing-plans 逐任务实现此计划。步骤使用复选框（`- [ ]`）语法来跟踪进度。
+> **面向 AI 代理的工作者：** 必需子技能：使用 superpowers:subagent-driven-development（推荐）或 superpowers:executing-plans 逐任务实现此计划。步骤使用复选框（`- [x]`）语法来跟踪进度。
 
 **目标：** 给桌面端局域网同步增加可持久化的「自动允许」开关，开启后收到的同步请求不再弹窗确认，直接合并。
 
@@ -24,7 +24,7 @@
 - 修改：`src/store/lanSyncStore.ts`
 - 测试：`src/store/lanSyncStore.test.ts`（新建）
 
-- [ ] **步骤 1：编写失败的测试**
+- [x] **步骤 1：编写失败的测试**
 
 ```ts
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -79,12 +79,12 @@ describe('自动允许', () => {
 });
 ```
 
-- [ ] **步骤 2：运行测试验证失败**
+- [x] **步骤 2：运行测试验证失败**
 
 运行：`npm test -- src/store/lanSyncStore.test.ts`
 预期：FAIL，`setAutoAllow is not a function` / `autoAllow` 为 `undefined`。
 
-- [ ] **步骤 3：实现状态与持久化**
+- [x] **步骤 3：实现状态与持久化**
 
 在 `src/store/lanSyncStore.ts`：
 
@@ -118,12 +118,12 @@ export const useLanSyncStore = create<LanSyncState>((set, get) => ({
   },
 ```
 
-- [ ] **步骤 4：运行测试验证通过**
+- [x] **步骤 4：运行测试验证通过**
 
 运行：`npm test -- src/store/lanSyncStore.test.ts`
 预期：PASS。
 
-- [ ] **步骤 5：Commit**
+- [x] **步骤 5：Commit**
 
 ```bash
 git add src/store/lanSyncStore.ts src/store/lanSyncStore.test.ts
@@ -138,7 +138,7 @@ git commit -m "feat(lan-sync): 自动允许开关状态与持久化"
 - 修改：`src/store/lanSyncStore.ts`
 - 测试：`src/store/lanSyncStore.test.ts`
 
-- [ ] **步骤 1：编写失败的测试**
+- [x] **步骤 1：编写失败的测试**
 
 在 `describe('自动允许')` 内追加：
 
@@ -165,12 +165,12 @@ git commit -m "feat(lan-sync): 自动允许开关状态与持久化"
   });
 ```
 
-- [ ] **步骤 2：运行测试验证失败**
+- [x] **步骤 2：运行测试验证失败**
 
 运行：`npm test -- src/store/lanSyncStore.test.ts`
 预期：FAIL，第一条 `pending` 仍为 `r1` 或 `invoke` 未调用。
 
-- [ ] **步骤 3：实现自动确认**
+- [x] **步骤 3：实现自动确认**
 
 ```ts
   async applyRequest(pending: PendingRequest, auto: boolean): Promise<void> {
@@ -219,12 +219,12 @@ git commit -m "feat(lan-sync): 自动允许开关状态与持久化"
 
 同时在 interface 中声明 `applyRequest(pending: PendingRequest, auto: boolean): Promise<void>;`，并删除原 `accept()` 的内联实现。
 
-- [ ] **步骤 4：运行测试验证通过**
+- [x] **步骤 4：运行测试验证通过**
 
 运行：`npm test -- src/store/lanSyncStore.test.ts`
 预期：PASS（两个用例）。
 
-- [ ] **步骤 5：Commit**
+- [x] **步骤 5：Commit**
 
 ```bash
 git add src/store/lanSyncStore.ts src/store/lanSyncStore.test.ts
@@ -238,14 +238,14 @@ git commit -m "feat(lan-sync): 自动允许时直接确认请求并对齐 60 秒
 **文件：**
 - 修改：`src/components/settings/LanSyncSection.tsx`
 
-- [ ] **步骤 1：读数与写入**
+- [x] **步骤 1：读数与写入**
 
 ```tsx
   const autoAllow = useLanSyncStore((s) => s.autoAllow);
   const setAutoAllow = useLanSyncStore((s) => s.setAutoAllow);
 ```
 
-- [ ] **步骤 2：在「同步服务」卡片末尾加一行**
+- [x] **步骤 2：在「同步服务」卡片末尾加一行**
 
 ```tsx
         <SetRow
@@ -257,12 +257,12 @@ git commit -m "feat(lan-sync): 自动允许时直接确认请求并对齐 60 秒
 
 位置：紧跟在 `服务状态` 那一行之后（`running` 条件块之前）。
 
-- [ ] **步骤 3：验证**
+- [x] **步骤 3：验证**
 
 运行：`npx tsc --noEmit && npm test`
 预期：无类型错误，143+ 个用例全部通过。
 
-- [ ] **步骤 4：真机验证**
+- [x] **步骤 4：真机验证**
 
 1. `npm run tauri dev`，进入 设置 → 局域网同步，确认开关默认关闭。
 2. 开启开关，重启应用，确认仍为开启。
@@ -270,7 +270,7 @@ git commit -m "feat(lan-sync): 自动允许时直接确认请求并对齐 60 秒
 4. 关闭开关，手机再发起：弹窗恢复。
 5. 不确认并等待 62 秒：手机收到 `408` 并显示「对方 60 秒内未确认」。
 
-- [ ] **步骤 5：Commit**
+- [x] **步骤 5：Commit**
 
 ```bash
 git add src/components/settings/LanSyncSection.tsx
