@@ -73,5 +73,5 @@ src/
   types/        # 数据模型（与安卓同构，snake_case 枚举序号）
 src-tauri/
   src/lib.rs   # SQLite/HTTP/dialog/fs 插件 + 局域网分享 HTTP 服务
-docs/superpowers/   # 设计规格与实现计划
+docs/design/        # 设计规格
 ```
