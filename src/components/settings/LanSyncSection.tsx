@@ -19,6 +19,8 @@ export function LanSyncSection() {
   const refresh = useLanSyncStore((s) => s.refresh);
   const stop = useLanSyncStore((s) => s.stop);
   const syncTo = useLanSyncStore((s) => s.syncTo);
+  const autoAllow = useLanSyncStore((s) => s.autoAllow);
+  const setAutoAllow = useLanSyncStore((s) => s.setAutoAllow);
   const nodes = useNodesStore((s) => s.nodes);
   const [pairing, setPairing] = useState('');
   const [copied, setCopied] = useState(false);
@@ -64,6 +66,18 @@ export function LanSyncSection() {
               label="局域网同步"
               checked={running}
               onCheckedChange={(v) => { if (v) void start(deviceName); else void stop(); }}
+            />
+          }
+        />
+
+        <SetRow
+          title="自动允许同步请求"
+          desc="开启后不再弹窗确认，仅建议在可信任的网络中使用。"
+          control={
+            <Switch
+              label="自动允许同步请求"
+              checked={autoAllow}
+              onCheckedChange={(v) => void setAutoAllow(v)}
             />
           }
         />
@@ -133,7 +147,13 @@ export function LanSyncSection() {
         </div>
       )}
       {message && (
-        <div className="mb-3.5 rounded-[10px] border border-destructive/30 bg-destructive/8 px-4 py-3 text-[11.5px] text-destructive">
+        <div
+          className={
+            phase === 'error'
+              ? 'mb-3.5 rounded-[10px] border border-destructive/30 bg-destructive/8 px-4 py-3 text-[11.5px] text-destructive'
+              : 'mb-3.5 rounded-[10px] border border-line bg-card px-4 py-3 text-[11.5px] text-muted-foreground'
+          }
+        >
           {message}
         </div>
       )}
