@@ -67,4 +67,30 @@ describe('自动允许', () => {
     expect(useLanSyncStore.getState().autoAllow).toBe(true);
     expect(saved).toEqual([{ key: 'lan_sync_auto_allow', value: true }]);
   });
+
+  it('开启后收到请求直接合并，不产生待确认状态', async () => {
+    useLanSyncStore.setState({ autoAllow: true });
+    await useLanSyncStore.getState().bind();
+    handler?.({
+      payload: { requestId: 'r1', from: { name: 'Samsung', platform: 'android' }, nodes: [] },
+    });
+    await new Promise((r) => setTimeout(r, 0));
+    expect(useLanSyncStore.getState().pending).toBeNull();
+    expect(invoke).toHaveBeenCalledWith(
+      'lan_sync_resolve',
+      expect.objectContaining({ requestId: 'r1', accept: true }),
+    );
+    expect(useLanSyncStore.getState().message).toContain('已自动允许');
+  });
+
+  it('关闭后仍然进入待确认状态', async () => {
+    useLanSyncStore.setState({ autoAllow: false });
+    await useLanSyncStore.getState().bind();
+    handler?.({
+      payload: { requestId: 'r2', from: { name: 'Samsung', platform: 'android' }, nodes: [] },
+    });
+    await new Promise((r) => setTimeout(r, 0));
+    expect(useLanSyncStore.getState().pending?.requestId).toBe('r2');
+    expect(invoke).not.toHaveBeenCalledWith('lan_sync_resolve', expect.anything());
+  });
 });

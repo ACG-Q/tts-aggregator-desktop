@@ -39,6 +39,7 @@ interface LanSyncState {
   syncTo(peer: Peer): Promise<void>;
   accept(): Promise<void>;
   reject(): Promise<void>;
+  applyRequest(pending: PendingRequest, auto: boolean): Promise<void>;
   setAutoAllow(v: boolean): Promise<void>;
   bind(): Promise<UnlistenFn>;
 }
@@ -124,6 +125,10 @@ export const useLanSyncStore = create<LanSyncState>((set, get) => ({
   async accept() {
     const pending = get().pending;
     if (!pending) return;
+    await get().applyRequest(pending, false);
+  },
+
+  async applyRequest(pending, auto) {
     try {
       const merged = mergeNodes(useNodesStore.getState().nodes, pending.nodes);
       await invoke('lan_sync_resolve', {
@@ -133,7 +138,17 @@ export const useLanSyncStore = create<LanSyncState>((set, get) => ({
         applied: merged.result.total,
       });
       const result = await useNodesStore.getState().mergeSynced(pending.nodes);
-      set({ pending: null, phase: 'done', result });
+      set({
+        pending: null,
+        phase: 'done',
+        result,
+        ...(auto
+          ? {
+              message:
+                `已自动允许 ${pending.from.name} 的同步：新增 ${result.added}，更新 ${result.updated}`,
+            }
+          : {}),
+      });
     } catch (e) {
       set({ pending: null, phase: 'error', message: errorText(e) });
     }
@@ -150,13 +165,17 @@ export const useLanSyncStore = create<LanSyncState>((set, get) => ({
 
   bind() {
     return listen<PendingRequest>('lan-sync://request', (event) => {
+      if (get().autoAllow) {
+        void get().applyRequest(event.payload, true);
+        return;
+      }
       set({ pending: event.payload, phase: 'requesting' });
       setTimeout(() => {
         if (get().pending?.requestId === event.payload.requestId) {
           void get().reject();
           set({ message: '请求已超时' });
         }
-      }, 60_000);
+      }, 62_000);
     });
   },
 }));
