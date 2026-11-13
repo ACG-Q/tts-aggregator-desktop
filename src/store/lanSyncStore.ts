@@ -7,6 +7,7 @@ import {
   type Peer, type SyncedNode,
 } from '../lib/lanSync';
 import { useNodesStore } from './nodesStore';
+import { deps } from './deps';
 
 export type LanSyncPhase =
   | 'idle' | 'starting' | 'waiting' | 'requesting' | 'syncing' | 'done' | 'error';
@@ -31,12 +32,14 @@ interface LanSyncState {
   message: string | null;
   result: { added: number; updated: number; skipped: number } | null;
   deviceName: string;
+  autoAllow: boolean;
   start(deviceName: string): Promise<void>;
   refresh(): Promise<void>;
   stop(): Promise<void>;
   syncTo(peer: Peer): Promise<void>;
   accept(): Promise<void>;
   reject(): Promise<void>;
+  setAutoAllow(v: boolean): Promise<void>;
   bind(): Promise<UnlistenFn>;
 }
 
@@ -54,14 +57,21 @@ export const useLanSyncStore = create<LanSyncState>((set, get) => ({
   message: null,
   result: null,
   deviceName: '书房的电脑',
+  autoAllow: false,
 
   async refresh() {
     try {
       const status = await invoke<SyncStatus | null>('lan_sync_status');
-      set({ status, phase: status ? 'waiting' : 'idle' });
+      const autoAllow = await deps().settings.getJson<boolean>('lan_sync_auto_allow', false);
+      set({ status, autoAllow, phase: status ? 'waiting' : 'idle' });
     } catch {
       set({ status: null, phase: 'idle' });
     }
+  },
+
+  async setAutoAllow(v) {
+    set({ autoAllow: v });
+    await deps().settings.setJson('lan_sync_auto_allow', v);
   },
 
   async start(deviceName) {
