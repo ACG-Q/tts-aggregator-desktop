@@ -1,0 +1,364 @@
+name: Release Desktop
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  changelog:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Read and validate version
+        id: version
+        run: |
+          set -euo pipefail
+          VERSION=$(node -p "require('./package.json').version")
+          CARGO_VERSION=$(sed -n 's/^version = "\(.*\)"$/\1/p' src-tauri/Cargo.toml | head -n 1)
+          CONF_VERSION=$(node -p "require('./src-tauri/tauri.conf.json').version")
+          if [ -z "$VERSION" ]; then
+            echo "::error::无法从 package.json 读取版本号"
+            exit 1
+          fi
+          if [ "$VERSION" != "$CARGO_VERSION" ] || [ "$VERSION" != "$CONF_VERSION" ]; then
+            echo "::error::版本号不一致：package.json=$VERSION Cargo.toml=$CARGO_VERSION tauri.conf.json=$CONF_VERSION"
+            exit 1
+          fi
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            TAG="${GITHUB_REF#refs/tags/}"
+            if [ "$TAG" != "v$VERSION" ]; then
+              echo "::error::tag $TAG 与代码中的版本 $VERSION 不一致，请先运行 scripts/release.ps1"
+              exit 1
+            fi
+          fi
+          echo "name=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "版本：$VERSION"
+
+      - name: Compute release range
+        id: meta
+        env:
+          VERSION: ${{ steps.version.outputs.name }}
+        run: |
+          set -euo pipefail
+          TAG="v${VERSION}"
+          git fetch --tags --force origin > /dev/null 2>&1 || true
+          if git rev-parse -q --verify "refs/tags/${TAG}^{commit}" > /dev/null; then
+            TARGET=$(git rev-parse "refs/tags/${TAG}^{commit}")
+          else
+            TARGET=$(git rev-parse HEAD)
+          fi
+          ROOT=$(git rev-list --max-parents=0 "${TARGET}" | tail -n 1)
+          PREV=$(git describe --tags --abbrev=0 --match "v[0-9]*" "${TARGET}^" 2>/dev/null || true)
+
+          # 上一个 Release 不是分类格式（或没有上一个版本）时，用全量历史补齐
+          FULL=false
+          if [ -z "$PREV" ]; then
+            FULL=true
+          else
+            PREV_BODY=$(gh release view "$PREV" --json body --jq .body 2>/dev/null || true)
+            if ! printf '%s' "$PREV_BODY" | grep -q '### 更新内容'; then
+              FULL=true
+            fi
+          fi
+
+          if [ "$FULL" = true ]; then
+            RANGE="${ROOT}..${TARGET}"
+            IGNORE_TAGS="--ignore-tags v*"
+            echo "使用全量范围：${ROOT}..${TARGET}"
+          else
+            RANGE="${PREV}..${TARGET}"
+            IGNORE_TAGS=""
+            echo "使用增量范围：${PREV}..${TARGET}"
+          fi
+
+          {
+            echo "range=${RANGE}"
+            echo "ignore_tags=${IGNORE_TAGS}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Generate categorized changelog
+        uses: orhun/git-cliff-action@v4
+        with:
+          config: .github/cliff.toml
+          args: ${{ steps.meta.outputs.range }} ${{ steps.meta.outputs.ignore_tags }} --output changelog.md
+
+      - name: Upload changelog
+        uses: actions/upload-artifact@v4
+        with:
+          name: changelog
+          path: changelog.md
+          if-no-files-found: error
+
+  release:
+    needs: changelog
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust build
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: "src-tauri -> target"
+
+      - name: Read and validate version
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION=$(node -p "require('./package.json').version")
+          CARGO_VERSION=$(sed -n 's/^version = "\(.*\)"$/\1/p' src-tauri/Cargo.toml | head -n 1)
+          CONF_VERSION=$(node -p "require('./src-tauri/tauri.conf.json').version")
+          if [ -z "$VERSION" ]; then
+            echo "::error::无法从 package.json 读取版本号"
+            exit 1
+          fi
+          if [ "$VERSION" != "$CARGO_VERSION" ] || [ "$VERSION" != "$CONF_VERSION" ]; then
+            echo "::error::版本号不一致：package.json=$VERSION Cargo.toml=$CARGO_VERSION tauri.conf.json=$CONF_VERSION"
+            exit 1
+          fi
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            TAG="${GITHUB_REF#refs/tags/}"
+            if [ "$TAG" != "v$VERSION" ]; then
+              echo "::error::tag $TAG 与代码中的版本 $VERSION 不一致，请先运行 scripts/release.ps1"
+              exit 1
+            fi
+          fi
+          echo "name=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "版本：$VERSION"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run frontend tests
+        run: npm test
+
+      - name: Run Rust tests
+        run: cargo test --manifest-path src-tauri/Cargo.toml
+
+      - name: Build installers
+        run: npm run tauri build -- --bundles nsis,msi
+
+      - name: Collect installers
+        shell: bash
+        env:
+          VERSION: ${{ steps.version.outputs.name }}
+        run: |
+          set -euo pipefail
+          NSIS=$(find src-tauri/target/release/bundle/nsis -maxdepth 1 -name "*-setup.exe" -print -quit)
+          MSI=$(find src-tauri/target/release/bundle/msi -maxdepth 1 -name "*.msi" -print -quit)
+          if [ -z "$NSIS" ]; then
+            echo "::error::未找到 NSIS 安装包"
+            exit 1
+          fi
+          if [ -z "$MSI" ]; then
+            echo "::error::未找到 MSI 安装包"
+            exit 1
+          fi
+          cp "$NSIS" "TTS-Aggregator-v${VERSION}-setup.exe"
+          cp "$MSI" "TTS-Aggregator-v${VERSION}.msi"
+          ls -l "TTS-Aggregator-v${VERSION}-setup.exe" "TTS-Aggregator-v${VERSION}.msi"
+
+      - name: Download changelog
+        uses: actions/download-artifact@v4
+        with:
+          name: changelog
+          path: .
+
+      - name: Compute release range
+        id: meta
+        shell: bash
+        env:
+          VERSION: ${{ steps.version.outputs.name }}
+        run: |
+          set -euo pipefail
+          TAG="v${VERSION}"
+          if git rev-parse -q --verify "refs/tags/${TAG}^{commit}" > /dev/null; then
+            TARGET=$(git rev-parse "refs/tags/${TAG}^{commit}")
+          else
+            TARGET=$(git rev-parse HEAD)
+          fi
+          ROOT=$(git rev-list --max-parents=0 "${TARGET}" | tail -n 1)
+          PREV=$(git describe --tags --abbrev=0 --match "v[0-9]*" "${TARGET}^" 2>/dev/null || true)
+          if [ -z "$PREV" ]; then
+            LOG_RANGE="${ROOT}..${TARGET}"
+            DIFF_BASE="${ROOT}"
+            LINK="**完整提交记录**：https://github.com/${GITHUB_REPOSITORY}/commits/${TAG}"
+          else
+            LOG_RANGE="${PREV}..${TARGET}"
+            DIFF_BASE="${PREV}"
+            LINK="**完整对比**：https://github.com/${GITHUB_REPOSITORY}/compare/${PREV}...${TAG}"
+          fi
+          {
+            echo "tag=${TAG}"
+            echo "target=${TARGET}"
+            echo "log_range=${LOG_RANGE}"
+            echo "diff_base=${DIFF_BASE}"
+            echo "link=${LINK}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Generate release notes
+        shell: bash
+        env:
+          VERSION: ${{ steps.version.outputs.name }}
+          TAG: ${{ steps.meta.outputs.tag }}
+          TARGET: ${{ steps.meta.outputs.target }}
+          LOG_RANGE: ${{ steps.meta.outputs.log_range }}
+          DIFF_BASE: ${{ steps.meta.outputs.diff_base }}
+          LINK: ${{ steps.meta.outputs.link }}
+        run: |
+          set -euo pipefail
+          EXE="TTS-Aggregator-${TAG}-setup.exe"
+          MSI="TTS-Aggregator-${TAG}.msi"
+          EXE_BYTES=$(stat -c%s "$EXE")
+          EXE_SIZE=$(awk -v b="$EXE_BYTES" 'BEGIN { printf "%.1f MB", b / 1048576 }')
+          EXE_SHA=$(sha256sum "$EXE" | awk '{print $1}')
+          MSI_BYTES=$(stat -c%s "$MSI")
+          MSI_SIZE=$(awk -v b="$MSI_BYTES" 'BEGIN { printf "%.1f MB", b / 1048576 }')
+          MSI_SHA=$(sha256sum "$MSI" | awk '{print $1}')
+          sha256sum "$EXE" > "${EXE}.sha256"
+          sha256sum "$MSI" > "${MSI}.sha256"
+
+          COMMIT_COUNT=$(git log --no-merges --pretty=format:%s "${LOG_RANGE}" | grep -vc '^chore: 发布' || true)
+          FILE_COUNT=$(git diff --name-only "${DIFF_BASE}" "${TARGET}" | wc -l)
+          SHORTSTAT=$(git diff --shortstat "${DIFF_BASE}" "${TARGET}" || true)
+          ADDED=$(git diff --name-status --diff-filter=A "${DIFF_BASE}" "${TARGET}" | awk -F'\t' '{print $2}')
+          MODIFIED=$(git diff --name-status --diff-filter=M "${DIFF_BASE}" "${TARGET}" | awk -F'\t' '{print $2}')
+          RENAMED=$(git diff --name-status --diff-filter=R "${DIFF_BASE}" "${TARGET}" | awk -F'\t' '{print $3}')
+          DELETED=$(git diff --name-status --diff-filter=D "${DIFF_BASE}" "${TARGET}" | awk -F'\t' '{print $2}')
+
+          format_list() { sed 's/.*/- `&`/'; }
+
+          CHANGELOG=$(sed -e '/./,$!d' changelog.md)
+          if [ -z "$CHANGELOG" ]; then
+            CHANGELOG="- 本次发布没有代码变更"
+          fi
+
+          {
+            echo "## TTS Aggregator ${TAG}"
+            echo
+            echo "Windows 10+ · x64 安装包"
+            echo
+            echo "### 更新内容"
+            echo
+            echo "$CHANGELOG"
+            echo
+            echo "### 变更统计"
+            echo
+            echo "- 提交：${COMMIT_COUNT} 个"
+            echo "- 文件：${FILE_COUNT} 个"
+            if [ -n "$SHORTSTAT" ]; then
+              echo "- 代码：${SHORTSTAT#*, }"
+            fi
+            echo
+            if [ -n "$ADDED$MODIFIED$RENAMED$DELETED" ]; then
+              echo "<details>"
+              echo "<summary>文件明细（${FILE_COUNT} 个）</summary>"
+              echo
+              if [ -n "$ADDED" ]; then
+                echo "**新增**"
+                echo
+                printf '%s\n' "$ADDED" | format_list
+                echo
+              fi
+              if [ -n "$MODIFIED" ]; then
+                echo "**修改**"
+                echo
+                printf '%s\n' "$MODIFIED" | format_list
+                echo
+              fi
+              if [ -n "$RENAMED" ]; then
+                echo "**重命名**"
+                echo
+                printf '%s\n' "$RENAMED" | format_list
+                echo
+              fi
+              if [ -n "$DELETED" ]; then
+                echo "**删除**"
+                echo
+                printf '%s\n' "$DELETED" | format_list
+                echo
+              fi
+              echo "</details>"
+              echo
+            fi
+            echo "### 下载"
+            echo
+            echo "| 文件 | 大小 | SHA-256 |"
+            echo "| --- | --- | --- |"
+            echo "| \`${EXE}\` | ${EXE_SIZE} | \`${EXE_SHA}\` |"
+            echo "| \`${MSI}\` | ${MSI_SIZE} | \`${MSI_SHA}\` |"
+            echo
+            echo "### 版本信息"
+            echo
+            echo "- 版本：${VERSION}"
+            echo "- 平台：Windows 10+（x64）"
+            echo "- 安装包：NSIS（推荐）与 MSI"
+            echo
+            echo "安装包未做代码签名，Windows SmartScreen 可能提示；选择「更多信息 → 仍要运行」即可。"
+            echo
+            echo "$LINK"
+          } > release-notes.md
+
+          cat release-notes.md
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: TTS-Aggregator-v${{ steps.version.outputs.name }}
+          path: |
+            TTS-Aggregator-v${{ steps.version.outputs.name }}-setup.exe
+            TTS-Aggregator-v${{ steps.version.outputs.name }}-setup.exe.sha256
+            TTS-Aggregator-v${{ steps.version.outputs.name }}.msi
+            TTS-Aggregator-v${{ steps.version.outputs.name }}.msi.sha256
+          if-no-files-found: error
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            TTS-Aggregator-v${{ steps.version.outputs.name }}-setup.exe
+            TTS-Aggregator-v${{ steps.version.outputs.name }}-setup.exe.sha256
+            TTS-Aggregator-v${{ steps.version.outputs.name }}.msi
+            TTS-Aggregator-v${{ steps.version.outputs.name }}.msi.sha256
+          name: TTS Aggregator v${{ steps.version.outputs.name }}
+          body_path: release-notes.md
+          fail_on_unmatched_files: true
+
+      - name: Refresh release notes
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.meta.outputs.tag }}
+        run: |
+          set -euo pipefail
+          gh release edit "$TAG" --notes-file release-notes.md
+          echo "已刷新 ${TAG} 的 Release 正文"

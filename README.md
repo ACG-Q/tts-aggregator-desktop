@@ -25,6 +25,7 @@ npm run tauri build   # 产出安装包
 - **日志**：调用记录（成功/失败/切换/触发冷却）、按结果过滤、一键清空
 - **导入**：FOFA（CSV/JSON 文件 + API 在线搜索）、ZoomEye（JSON 文件 + API 在线搜索），TTS 关键词相关性排序、逐条勾选入库、来源溯源
 - **局域网分享**：内嵌只读 HTTP 服务 `GET /nodes.json`，token 校验（query 或 X-Token 头）、可选仅本机监听，供同网段设备拉取节点配置
+- **局域网同步**：与安卓端双向合并节点（mDNS 自动发现、二维码/配对串配对），可开启「自动允许同步请求」免确认；只同步节点，不传 API Key 与偏好设置
 - **书架（小说听书）**：导入本地 TXT，内置多级目录解析（第X卷/篇/部 + 第X章/回/节/集 + 「1、」「1.」编号行；中文/阿拉伯/罗马数字），按卷分组章节树点播、断点续听（书/章/段三级进度）、章末自动连播、全书播完提示、书级倍速覆盖
 - **朗读增强**：句级高亮随播放推进并自动滚动，睡眠定时（0/15/30/60 分钟），±10 秒跳转，实时字数与预计时长，超长文本分段提示
 - **续听**：纯文本与书籍均保留上次位置，启动后在朗读页/书架提供「继续上次」入口；关闭自动续听后入口隐藏
@@ -36,7 +37,7 @@ npm run tauri build   # 产出安装包
 | 差异 | 说明 |
 |------|------|
 | 文本导入 | 仅支持本地 TXT 文件（webview 文件选择），无 EPUB |
-| 分享方式 | 局域网 URL + token，无二维码 |
+| 扫码 | 桌面端展示二维码与配对串，自身不调用摄像头 |
 | 系统 TTS | 不支持（桌面程序无法注册为系统朗读引擎），朗读仅在应用内 |
 | 播放实现 | HTML5 Audio + blob URL（节点返回 MP3 直接可播），无 PCM 解码 |
 | UI 技术栈 | Tailwind CSS v4 + shadcn/ui（明/暗双主题，跟随系统） |
@@ -48,6 +49,17 @@ npm test              # 等价 npx vitest run，全部纯函数单测
 npx tsc --noEmit      # 类型检查
 cargo check --manifest-path src-tauri\Cargo.toml   # Rust 检查
 ```
+
+## 发布
+
+版本号统一维护在 `package.json`、`src-tauri/Cargo.toml`、`src-tauri/tauri.conf.json`，由脚本同步改写：
+
+```powershell
+.\scripts\release.ps1 1.0.0         # 更新版本号、提交、打 tag 并推送
+.\scripts\release.ps1 1.0.0 -NoPush # 只生成本地提交与 tag
+```
+
+推送 tag 后由 `.github/workflows/release.yml` 在 Windows runner 上构建 NSIS 与 MSI 安装包，按 `.github/cliff.toml` 生成分类变更记录并创建 GitHub Release。
 
 ## 目录结构
 
@@ -74,4 +86,6 @@ src/
 src-tauri/
   src/lib.rs   # SQLite/HTTP/dialog/fs 插件 + 局域网分享 HTTP 服务
 docs/design/        # 设计规格
+.github/workflows/  # 发布流水线（NSIS/MSI + Release）
+scripts/            # 发版脚本
 ```
