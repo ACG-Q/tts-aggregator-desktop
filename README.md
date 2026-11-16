@@ -1,6 +1,6 @@
 # Pulse 桌面端
 
-**Pulse 桌面端**（仓库名 `tts-aggregator-desktop`）是 Pulse 的 Windows 客户端，基于 Tauri 2 + React + TypeScript + Vite。它与安卓版共用同一套节点协议：把多个自建 TTS 节点聚合成一个稳定的合成通道，自动挑选可用节点、失败自动切换，并在本机完成长文本朗读与小说听书。
+**Pulse 桌面端**（仓库名 `tts-aggregator-desktop`，应用内显示名为 TTS Aggregator）是 Pulse 的 Windows 客户端，基于 Tauri 2 + React + TypeScript + Vite。它与安卓版共用同一套节点协议：把多个自建 TTS 节点聚合成一个稳定的合成通道，自动挑选可用节点、失败自动切换，并在本机完成长文本朗读与小说听书。
 
 <p align="center">
   <img src="screenshots/01-read.png" width="32%" alt="朗读页" />
@@ -84,7 +84,7 @@
 | --- | --- | --- |
 | ![朗读页](screenshots/01-read.png) | ![节点管理](screenshots/02-nodes.png) | ![播放器](screenshots/03-player.png) |
 
-| 音色 | 设置 |
+| 音色 | 设置（局域网同步） |
 | --- | --- |
 | ![音色](screenshots/04-voices.png) | ![设置](screenshots/05-settings.png) |
 
