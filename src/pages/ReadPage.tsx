@@ -1,19 +1,17 @@
 import { useMemo, useRef, useState } from 'react';
 import { ChevronDown, History, Play, Upload, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
 import { Textarea } from '@/components/ui/textarea';
 import { PageHeader } from '@/components/PageHeader';
+import { VoicePicker } from '@/components/voice/VoicePicker';
 import { readTextFile } from '@/lib/encoding';
 import { estimateReadingSeconds, fmtReadingDuration, LONG_TEXT_HINT } from '@/lib/estimate';
 import { fmtTimeFull } from '@/lib/format';
 import { splitForReading } from '@/lib/split';
-import { voiceDisplayName } from '@/lib/voices';
 import { usePlayerStore } from '@/store/playerStore';
 import { useResumeStore } from '@/store/resumeStore';
 import { useSettingsStore } from '@/store/settingsStore';
-import { useVoicesStore } from '@/store/voicesStore';
 
 const card = 'rounded-[13px] border border-line bg-card';
 
@@ -31,8 +29,6 @@ export function ReadPage() {
   const synth = useSettingsStore((s) => s.synth);
   const saveSynth = useSettingsStore((s) => s.saveSynth);
   const appPrefs = useSettingsStore((s) => s.appPrefs);
-  const voices = useVoicesStore((s) => s.voices);
-  const load = useVoicesStore((s) => s.load);
   const snapshot = useResumeStore((s) => s.snapshot);
   const clearSnapshot = useResumeStore((s) => s.clear);
   const idle = status === 'idle';
@@ -131,19 +127,10 @@ export function ReadPage() {
         <div className={`${card} grid gap-5 px-5 py-4 sm:grid-cols-3`}>
           <div className="min-w-0">
             <div className="eyebrow mb-2">音色</div>
-            <Select
-              value={synth.voice || 'node-default'}
-              onOpenChange={(open) => { if (open) void load(); }}
-              onValueChange={(v) => void saveSynth({ ...synth, voice: v === 'node-default' ? '' : v, style: '' })}
-            >
-              <SelectTrigger className="h-9 w-full"><SelectValue placeholder="节点默认音色" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="node-default">节点默认音色</SelectItem>
-                {voices.map((v) => (
-                  <SelectItem key={v.id} value={v.id}>{voiceDisplayName(v)}（{v.id}）</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <VoicePicker
+              value={synth.voice}
+              onChange={(id) => void saveSynth({ ...synth, voice: id, style: '' })}
+            />
           </div>
           <div className="min-w-0">
             <div className="mb-2.5 flex items-baseline justify-between">

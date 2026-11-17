@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { PageHeader } from '@/components/PageHeader';
 import { playAudition, stopAudition } from '@/lib/audition';
-import { styleDisplayName, voiceDisplayName } from '@/lib/voices';
+import { styleDisplayName } from '@/lib/voices';
 import {
   LANGUAGE_OPTIONS, filterVoices, groupByLanguage, languageBucket, pushRecentVoice, readRecentVoices,
   sortVoicesByLanguage,
@@ -16,6 +16,7 @@ import {
 import { synthesizeText } from '@/store/poolDeps';
 import { useSettingsStore } from '@/store/settingsStore';
 import { useVoicesStore } from '@/store/voicesStore';
+import { voiceLabel } from '@/lib/voiceQuery';
 import type { Voice } from '@/types/models';
 
 const PAGE_SIZE = 60;
@@ -32,8 +33,9 @@ function genderLabel(gender: string): string {
   return gender;
 }
 
-function VoiceRow({ v, isDefault, defaultStyle, auditioningKey, onAudition, onSetDefault }: {
+function VoiceRow({ v, label, isDefault, defaultStyle, auditioningKey, onAudition, onSetDefault }: {
   v: Voice;
+  label: string;
   isDefault: boolean;
   defaultStyle: string;
   auditioningKey: string | null;
@@ -51,10 +53,10 @@ function VoiceRow({ v, isDefault, defaultStyle, auditioningKey, onAudition, onSe
     <div className="px-4 py-3 transition-colors hover:bg-surface-2">
       <div className="grid grid-cols-[36px_minmax(0,1fr)_auto_24px] items-center gap-3 lg:grid-cols-[36px_minmax(0,210px)_1fr_auto_auto_24px]">
         <div className="grid h-9 w-9 place-items-center rounded-[9px] border border-line bg-surface-2 text-[13px] font-semibold text-muted-foreground">
-          {voiceDisplayName(v).slice(0, 1) || '音'}
+          {label.slice(0, 1) || '音'}
         </div>
         <div className="min-w-0">
-          <div className="truncate text-[12.5px] font-semibold">{voiceDisplayName(v)}</div>
+          <div className="truncate text-[12.5px] font-semibold">{label}</div>
           <div className="truncate font-mono text-[10px] text-faint">{v.id}</div>
         </div>
         <div className="hidden min-w-0 flex-wrap gap-1.5 lg:flex">
@@ -220,7 +222,7 @@ export function VoicesPage() {
   function setDefault(v: Voice, style: string): void {
     void saveSynth({ ...synth, voice: v.id, style });
     record(v.id);
-    toast.success(`默认音色已设为 ${voiceDisplayName(v)}${style ? ` · ${styleDisplayName(style)}` : ''}`);
+    toast.success(`默认音色已设为 ${voiceLabel(voices, v)}${style ? ` · ${styleDisplayName(style)}` : ''}`);
   }
 
   return (
@@ -303,7 +305,7 @@ export function VoicesPage() {
         <div className="min-w-0">
           <div className="text-[9.5px] uppercase tracking-[0.14em] text-faint">当前默认</div>
           <div className="truncate text-[13px] font-semibold">
-            {defaultVoice ? voiceDisplayName(defaultVoice) : '节点默认音色'}
+            {defaultVoice ? voiceLabel(voices, defaultVoice) : '节点默认音色'}
           </div>
           <div className="truncate font-mono text-[10px] text-faint">{synth.voice || '由节点决定'}</div>
         </div>
@@ -326,7 +328,7 @@ export function VoicesPage() {
                 className="inline-flex h-[30px] items-center gap-1.5 rounded-full border border-line bg-card px-3 text-[11.5px] hover:border-primary/40"
               >
                 <span className="h-1.5 w-1.5 rounded-full bg-primary" />
-                {voiceDisplayName(v)}
+                {voiceLabel(voices, v)}
                 {auditioning?.startsWith(`${v.id}:`) && <Pause className="h-3 w-3 text-primary" />}
               </button>
             ))}
@@ -342,6 +344,7 @@ export function VoicesPage() {
                 <VoiceRow
                   key={v.id}
                   v={v}
+                  label={voiceLabel(voices, v)}
                   isDefault={synth.voice === v.id}
                   defaultStyle={synth.style}
                   auditioningKey={auditioning}
@@ -362,6 +365,7 @@ export function VoicesPage() {
                     <VoiceRow
                       key={v.id}
                       v={v}
+                      label={voiceLabel(voices, v)}
                       isDefault={synth.voice === v.id}
                       defaultStyle={synth.style}
                       auditioningKey={auditioning}

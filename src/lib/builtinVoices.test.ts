@@ -29,6 +29,37 @@ describe('mergeVoiceTranslations', () => {
     expect(remote.nameZh).toBe('贝塔');
   });
 
+  it('基础人名忽略变音符与空格', () => {
+    const builtin = [voice('vi-VN-HoaiMyNeural', 'Hoài My', 'Hoài My', {
+      nameZh: '怀美', introZh: '越南语女声', locale: 'vi-VN',
+    })];
+    const [remote] = mergeVoiceTranslations(
+      [voice('vi-VN-HoaiMy:DragonHDLatestNeural', 'Hoài My HD', 'Hoài My', { locale: 'vi-VN' })],
+      builtin,
+    );
+    expect(remote.nameZh).toBe('怀美');
+  });
+
+  it('去掉变体后缀后按 id 匹配', () => {
+    const builtin = [voice('vi-VN-Grant:MAI-Voice-2.1', 'Grant 2.1', 'Grant', {
+      nameZh: '格兰特', introZh: '越南语男声', locale: 'vi-VN',
+    })];
+    const [remote] = mergeVoiceTranslations(
+      [voice('vi-VN-Grant:MAI-Voice-2.1-Flash', 'Grant Flash', 'Grant', { locale: 'vi-VN' })],
+      builtin,
+    );
+    expect(remote.nameZh).toBe('格兰特');
+  });
+
+  it('内置库真实数据能补全 HoaiMy 变体', async () => {
+    const builtin = await loadBuiltinVoices();
+    const [remote] = mergeVoiceTranslations(
+      [voice('vi-VN-HoaiMyNeural', 'Hoài My', 'Hoài My', { locale: 'vi-VN' })],
+      builtin,
+    );
+    expect(remote.nameZh).toBeTruthy();
+  });
+
   it('远端已有翻译不被覆盖', () => {
     const builtin = [voice('a', 'Alpha', '', { nameZh: '内置', introZh: '内置简介' })];
     const [remote] = mergeVoiceTranslations(

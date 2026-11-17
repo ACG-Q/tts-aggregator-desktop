@@ -1,6 +1,6 @@
 # Pulse 桌面端
 
-**Pulse 桌面端**（仓库名 `tts-aggregator-desktop`，应用内显示名为 TTS Aggregator）是 Pulse 的 Windows 客户端，基于 Tauri 2 + React + TypeScript + Vite。它与安卓版共用同一套节点协议：把多个自建 TTS 节点聚合成一个稳定的合成通道，自动挑选可用节点、失败自动切换，并在本机完成长文本朗读与小说听书。
+**Pulse 桌面端**（仓库名 `tts-aggregator-desktop`，应用内显示名为 TTS Aggregator）是 Pulse 的桌面客户端，基于 Tauri 2 + React + TypeScript + Vite，首发支持 Windows，同时可在 macOS 与 Linux 上自行编译。它与安卓版共用同一套节点协议：把多个自建 TTS 节点聚合成一个稳定的合成通道，自动挑选可用节点、失败自动切换，并在本机完成长文本朗读与小说听书。
 
 <p align="center">
   <img src="screenshots/01-read.png" width="32%" alt="朗读页" />
@@ -15,6 +15,7 @@
 - [工作原理](#工作原理)
 - [节点接口要求](#节点接口要求)
 - [快速开始](#快速开始)
+- [在其他平台构建](#在其他平台构建)
 - [使用说明](#使用说明)
 - [权限说明](#权限说明)
 - [项目结构](#项目结构)
@@ -48,8 +49,9 @@
 ### 音色
 
 - 从节点拉取 `/api/v1/voices` 或 `/voices`，内置中文显示名映射
-- 按性别、语言筛选，支持搜索、试听与设为默认
-- 离线内置音色清单，节点不可用时仍可浏览
+- 音色选择抽屉支持搜索与「常用 / 全部 / 中文 / 英语 / 其他语言」筛选，按语言分组
+- 同名音色的不同版本以括号标记区分（如「晓晓（高清闪速）」），保留全部版本
+- 支持试听与设为默认，离线内置音色清单，节点不可用时仍可浏览
 
 ### 书架（小说听书）
 
@@ -87,6 +89,10 @@
 | 音色 | 设置（局域网同步） |
 | --- | --- |
 | ![音色](screenshots/04-voices.png) | ![设置](screenshots/05-settings.png) |
+
+| 音色选择器 | 关于 |
+| --- | --- |
+| ![音色选择器](screenshots/06-voice-picker.png) | ![关于](screenshots/07-about.png) |
 
 ## 工作原理
 
@@ -127,7 +133,7 @@
 
 ## 快速开始
 
-### 环境要求
+### 环境要求（Windows）
 
 | 项目 | 版本 |
 | --- | --- |
@@ -163,6 +169,159 @@ npm run tauri build
 
 安装包未做代码签名，首次运行时 Windows SmartScreen 可能提示「已保护你的电脑」，选择「更多信息 → 仍要运行」即可。
 
+## 在其他平台构建
+
+CI 目前只产出 Windows 安装包（`.github/workflows/release.yml` 运行在 `windows-latest`）。macOS 与 Linux 需要在对应系统上本地构建，Tauri 不支持从 Windows 直接交叉编译出可用的 macOS / Linux 安装包。
+
+### macOS
+
+#### 环境准备
+
+| 项目 | 要求 |
+| --- | --- |
+| 系统 | macOS 12 及以上 |
+| Xcode | 安装 Command Line Tools：`xcode-select --install` |
+| Node.js | 18+（推荐 20+） |
+| Rust | stable，通过 [rustup](https://rustup.rs) 安装 |
+
+```bash
+# 安装 Rust
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+
+# Apple Silicon 与 Intel 通用构建需要两个目标
+rustup target add aarch64-apple-darwin x86_64-apple-darwin
+
+# 安装依赖并构建
+npm install
+npm run tauri build
+```
+
+产物位置：
+
+- `src-tauri/target/release/bundle/macos/TTS Aggregator.app`
+- `src-tauri/target/release/bundle/dmg/TTS Aggregator_*.dmg`
+
+仅构建当前架构时直接使用 `npm run tauri build`；需要同时支持 Apple Silicon 与 Intel 时：
+
+```bash
+npm run tauri build -- --target universal-apple-darwin
+```
+
+#### 获取签名证书（Developer ID）
+
+未签名的 `.app` 可以被「右键 → 打开」绕过 Gatekeeper，但分发给其他人时会提示「无法验证开发者」，且无法公证。正式分发需要 Apple Developer Program 账号（个人 99 美元/年，企业 299 美元/年）。
+
+1. **加入 Apple Developer Program**  
+   使用 Apple ID 登录 [developer.apple.com/programs](https://developer.apple.com/programs/)，完成个人或组织实名认证并付费。
+
+2. **生成证书签名请求（CSR）**  
+   打开「钥匙串访问 → 证书助理 → 从证书颁发机构请求证书」，填写开发者账号邮箱与常用名称，选择「存储到磁盘」，得到 `CertificateSigningRequest.certSigningRequest`。
+
+3. **创建 Developer ID Application 证书**  
+   登录 [developer.apple.com/account/resources/certificates](https://developer.apple.com/account/resources/certificates/list)，点击 `+`，选择 **Developer ID Application**，上传上一步的 CSR，下载生成的 `.cer` 文件。
+
+4. **安装证书到钥匙串**  
+   双击 `.cer` 安装到「登录」钥匙串。确认私钥存在：
+
+   ```bash
+   security find-identity -v -p codesigning
+   # 应看到：Developer ID Application: Your Name (TEAMID)
+   ```
+
+5. **导出 p12（可选，用于 CI）**  
+   在钥匙串中右键该证书 →「导出」，保存为 `.p12` 并设置密码。CI 中通过下面的环境变量注入：
+
+   ```bash
+   export APPLE_CERTIFICATE="$(base64 -i certificate.p12)"
+   export APPLE_CERTIFICATE_PASSWORD="导出时设置的密码"
+   export APPLE_SIGNING_IDENTITY="Developer ID Application: Your Name (TEAMID)"
+   ```
+
+6. **准备公证凭据**  
+   在 [appleid.apple.com](https://appleid.apple.com) 的「登录与安全」中生成 App 专用密码，或使用 App Store Connect API Key。然后设置：
+
+   ```bash
+   export APPLE_SIGNING_IDENTITY="Developer ID Application: Your Name (TEAMID)"
+   export APPLE_ID="your@email.com"
+   export APPLE_PASSWORD="app-specific-password"
+   export APPLE_TEAM_ID="TEAMID"
+   ```
+
+7. **签名并公证**  
+   重新执行 `npm run tauri build`。Tauri 会在检测到上述环境变量后自动完成签名与公证。
+
+   若需手动公证（例如已有一个构建好的 `.app`）：
+
+   ```bash
+   ditto -c -k --keepParent "TTS Aggregator.app" TTS.zip
+   xcrun notarytool submit TTS.zip \
+     --apple-id "your@email.com" \
+     --password "app-specific-password" \
+     --team-id "TEAMID" --wait
+   xcrun stapler staple "TTS Aggregator.app"
+   spctl -a -vvv -t exec "TTS Aggregator.app"
+   ```
+
+8. **个人自用、不购买证书**  
+   可以只做 ad-hoc 签名，或直接右键打开：
+
+   ```bash
+   codesign --force --deep --sign - "TTS Aggregator.app"
+   xattr -dr com.apple.quarantine "/Applications/TTS Aggregator.app"
+   ```
+
+   这种方式生成的应用不能分发给其他人，也无法通过公证。
+
+### Linux
+
+#### 环境准备
+
+Ubuntu / Debian：
+
+```bash
+sudo apt update
+sudo apt install -y \
+  libwebkit2gtk-4.1-dev build-essential curl wget file \
+  libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
+```
+
+Fedora：
+
+```bash
+sudo dnf install -y webkit2gtk4.1-devel openssl-devel curl wget file \
+  libappindicator-gtk3-devel librsvg2-devel
+sudo dnf group install -y "C Development Tools and Libraries"
+```
+
+Arch Linux：
+
+```bash
+sudo pacman -S --needed webkit2gtk-4.1 base-devel curl wget file \
+  openssl appmenu-gtk-module libappindicator-gtk3 librsvg
+```
+
+#### 构建
+
+```bash
+npm install
+npm run tauri build
+```
+
+产物位置：
+
+- `src-tauri/target/release/bundle/appimage/*.AppImage`
+- `src-tauri/target/release/bundle/deb/*.deb`
+- `src-tauri/target/release/bundle/rpm/*.rpm`（需要 `rpmbuild`）
+
+AppImage 运行前需要加执行权限：
+
+```bash
+chmod +x "src-tauri/target/release/bundle/appimage/TTS Aggregator_*.AppImage"
+./"src-tauri/target/release/bundle/appimage/TTS Aggregator_*.AppImage"
+```
+
+Linux 构建未做签名，部分桌面环境会提示来源未知。不同发行版的 WebKitGTK 版本差异可能导致渲染或音频行为不同，建议在目标发行版上构建与测试。
+
 ### 运行测试
 
 ```powershell
@@ -180,7 +339,7 @@ cargo check --manifest-path src-tauri\Cargo.toml   # Rust 检查
 .\scripts\release.ps1 1.0.1 -NoPush # 只生成本地提交与 tag
 ```
 
-推送 tag 后由 `.github/workflows/release.yml` 在 Windows runner 上运行测试、构建 NSIS 与 MSI，并按 `.github/cliff.toml` 生成分类变更记录、创建 GitHub Release。
+推送 tag 后由 `.github/workflows/release.yml` 在 Windows runner 上运行测试、构建 NSIS 与 MSI，并按 `.github/cliff.toml` 生成分类变更记录、创建 GitHub Release。macOS 与 Linux 产物需按[在其他平台构建](#在其他平台构建)本地生成。
 
 > PowerShell 默认执行策略可能阻止脚本运行。可仅对本次进程放行：
 > `powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\release.ps1 1.0.1`
@@ -190,7 +349,7 @@ cargo check --manifest-path src-tauri\Cargo.toml   # Rust 检查
 1. **添加节点**：进入「节点」页，点击右上角 `+`，填写节点地址（如 `https://tts.example.com`），可选填名称、分组与 API Key。
 2. **测试节点**：保存后自动探测；也可手动「测试连接」或「全部探测」。
 3. **选择调度模式**：在「自动 / 按组 / 手选」之间切换，按需配置轮询池或固定节点。
-4. **选择音色**：在朗读页点击音色入口，或进入「设置 → 默认声音」。
+4. **选择音色**：在朗读页点击音色选择器，按「常用 / 全部 / 中文 / 英语」或语言筛选；也可进入「设置 → 语音参数」设置默认音色。
 5. **开始朗读**：在朗读页粘贴文本或导入 TXT，点击开始；底部播放器支持倍速、跳转与睡眠定时。
 6. **导入小说**：进入「书架」导入 TXT，解析目录后按章节收听，进度自动保存。
 7. **导入节点**：在「节点 → 导入」中使用 FOFA / ZoomEye 文件或在线搜索，勾选后批量入库。
@@ -300,7 +459,7 @@ scripts/            # 发版脚本
 
 ## 已知限制
 
-- 仅提供 Windows 10+ x64 安装包，未提供 macOS / Linux 正式构建
+- 官方 Release 仅提供 Windows 10+ x64 安装包；macOS / Linux 需按上文本地构建
 - 安装包未签名，SmartScreen 会提示未知发布者
 - 无系统 TTS 引擎能力，其他应用无法调用
 - 无自动更新与后台常驻，关闭窗口即停止播放与同步

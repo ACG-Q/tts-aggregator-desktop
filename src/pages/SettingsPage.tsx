@@ -11,8 +11,10 @@ import { PageHeader } from '@/components/PageHeader';
 import { DataSection } from '@/components/settings/DataSection';
 import { LanSyncSection } from '@/components/settings/LanSyncSection';
 import { SetCard, SetRow, Switch } from '@/components/settings/SetBits';
+import { AboutSection } from '@/components/settings/AboutSection';
+import { VoicePicker } from '@/components/voice/VoicePicker';
 import { playAudition, stopAudition } from '@/lib/audition';
-import { styleDisplayName, voiceDisplayName } from '@/lib/voices';
+import { styleDisplayName } from '@/lib/voices';
 import { synthesizeText } from '@/store/poolDeps';
 import { useNodesStore } from '@/store/nodesStore';
 import { useSettingsStore } from '@/store/settingsStore';
@@ -26,7 +28,7 @@ const THEME_OPTIONS: [ThemeMode, string][] = [
   ['dark', '深色'], ['light', '浅色'], ['system', '跟随系统'],
 ];
 
-type SectionKey = 'voice' | 'appearance' | 'schedule' | 'data' | 'sync';
+type SectionKey = 'voice' | 'appearance' | 'schedule' | 'data' | 'sync' | 'about';
 
 const SECTIONS: [SectionKey, string, string][] = [
   ['voice', '语音参数', '默认音色、语速与音调'],
@@ -34,6 +36,7 @@ const SECTIONS: [SectionKey, string, string][] = [
   ['schedule', '调度与探测', '失败冷却与探测行为'],
   ['data', '数据', '导出与导入配置'],
   ['sync', '局域网同步', '与手机双向合并节点'],
+  ['about', '关于', '版本、仓库与运行环境'],
 ];
 
 function ThemePreview({ mode }: { mode: ThemeMode }) {
@@ -123,19 +126,11 @@ export function SettingsPage() {
                   title="朗读音色"
                   desc="未指定时使用当前节点的默认音色。"
                   control={
-                    <Select
-                      value={synth.voice || 'node-default'}
-                      onOpenChange={(open) => { if (open) void useVoicesStore.getState().load(); }}
-                      onValueChange={(v) => void saveSynth({ ...synth, voice: v === 'node-default' ? '' : v, style: '' })}
-                    >
-                      <SelectTrigger className="w-[190px]"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="node-default">节点默认音色</SelectItem>
-                        {voices.map((v) => (
-                          <SelectItem key={v.id} value={v.id}>{voiceDisplayName(v)}（{v.id}）</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <VoicePicker
+                      value={synth.voice}
+                      onChange={(id) => void saveSynth({ ...synth, voice: id, style: '' })}
+                      triggerClassName="w-[190px]"
+                    />
                   }
                 />
                 <SetRow
@@ -383,6 +378,8 @@ export function SettingsPage() {
           {active === 'data' && <DataSection />}
 
           {active === 'sync' && <LanSyncSection />}
+
+          {active === 'about' && <AboutSection />}
 
         </div>
       </div>
