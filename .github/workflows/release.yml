@@ -205,22 +205,14 @@ jobs:
           else
             TARGET=$(git rev-parse HEAD)
           fi
-          ROOT=$(git rev-list --max-parents=0 "${TARGET}" | tail -n 1)
           PREV=$(git describe --tags --abbrev=0 --match "v[0-9]*" "${TARGET}^" 2>/dev/null || true)
           if [ -z "$PREV" ]; then
-            LOG_RANGE="${ROOT}..${TARGET}"
-            DIFF_BASE="${ROOT}"
             LINK="**完整提交记录**：https://github.com/${GITHUB_REPOSITORY}/commits/${TAG}"
           else
-            LOG_RANGE="${PREV}..${TARGET}"
-            DIFF_BASE="${PREV}"
             LINK="**完整对比**：https://github.com/${GITHUB_REPOSITORY}/compare/${PREV}...${TAG}"
           fi
           {
             echo "tag=${TAG}"
-            echo "target=${TARGET}"
-            echo "log_range=${LOG_RANGE}"
-            echo "diff_base=${DIFF_BASE}"
             echo "link=${LINK}"
           } >> "$GITHUB_OUTPUT"
 
@@ -229,9 +221,6 @@ jobs:
         env:
           VERSION: ${{ steps.version.outputs.name }}
           TAG: ${{ steps.meta.outputs.tag }}
-          TARGET: ${{ steps.meta.outputs.target }}
-          LOG_RANGE: ${{ steps.meta.outputs.log_range }}
-          DIFF_BASE: ${{ steps.meta.outputs.diff_base }}
           LINK: ${{ steps.meta.outputs.link }}
         run: |
           set -euo pipefail
@@ -245,16 +234,6 @@ jobs:
           MSI_SHA=$(sha256sum "$MSI" | awk '{print $1}')
           sha256sum "$EXE" > "${EXE}.sha256"
           sha256sum "$MSI" > "${MSI}.sha256"
-
-          COMMIT_COUNT=$(git log --no-merges --pretty=format:%s "${LOG_RANGE}" | grep -vc '^chore: 发布' || true)
-          FILE_COUNT=$(git diff --name-only "${DIFF_BASE}" "${TARGET}" | wc -l)
-          SHORTSTAT=$(git diff --shortstat "${DIFF_BASE}" "${TARGET}" || true)
-          ADDED=$(git diff --name-status --diff-filter=A "${DIFF_BASE}" "${TARGET}" | awk -F'\t' '{print $2}')
-          MODIFIED=$(git diff --name-status --diff-filter=M "${DIFF_BASE}" "${TARGET}" | awk -F'\t' '{print $2}')
-          RENAMED=$(git diff --name-status --diff-filter=R "${DIFF_BASE}" "${TARGET}" | awk -F'\t' '{print $3}')
-          DELETED=$(git diff --name-status --diff-filter=D "${DIFF_BASE}" "${TARGET}" | awk -F'\t' '{print $2}')
-
-          format_list() { sed 's/.*/- `&`/'; }
 
           CHANGELOG=$(sed -e '/./,$!d' changelog.md)
           if [ -z "$CHANGELOG" ]; then
@@ -270,45 +249,6 @@ jobs:
             echo
             echo "$CHANGELOG"
             echo
-            echo "### 变更统计"
-            echo
-            echo "- 提交：${COMMIT_COUNT} 个"
-            echo "- 文件：${FILE_COUNT} 个"
-            if [ -n "$SHORTSTAT" ]; then
-              echo "- 代码：${SHORTSTAT#*, }"
-            fi
-            echo
-            if [ -n "$ADDED$MODIFIED$RENAMED$DELETED" ]; then
-              echo "<details>"
-              echo "<summary>文件明细（${FILE_COUNT} 个）</summary>"
-              echo
-              if [ -n "$ADDED" ]; then
-                echo "**新增**"
-                echo
-                printf '%s\n' "$ADDED" | format_list
-                echo
-              fi
-              if [ -n "$MODIFIED" ]; then
-                echo "**修改**"
-                echo
-                printf '%s\n' "$MODIFIED" | format_list
-                echo
-              fi
-              if [ -n "$RENAMED" ]; then
-                echo "**重命名**"
-                echo
-                printf '%s\n' "$RENAMED" | format_list
-                echo
-              fi
-              if [ -n "$DELETED" ]; then
-                echo "**删除**"
-                echo
-                printf '%s\n' "$DELETED" | format_list
-                echo
-              fi
-              echo "</details>"
-              echo
-            fi
             echo "### 下载"
             echo
             echo "| 文件 | 大小 | SHA-256 |"
