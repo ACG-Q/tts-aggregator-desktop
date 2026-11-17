@@ -109,10 +109,13 @@ export function createApi(
     return null;
   }
 
-  function jsonBody(text: string, prefs: SynthPrefs, defaultVoice: string): string {
+  function jsonBody(text: string, prefs: SynthPrefs, defaultVoice: string, numericRate = false): string {
     const voice = prefs.voice || defaultVoice;
-    const obj: Record<string, unknown> = { text, rate: prefs.rate, pitch: prefs.pitch };
+    const obj: Record<string, unknown> = { text };
     if (voice) obj.voice = voice;
+    // 节点只接受字符串形式的 rate/pitch，数字会返回 400；数字格式仅作旧部署回退
+    obj.rate = numericRate ? prefs.rate : String(prefs.rate);
+    obj.pitch = numericRate ? prefs.pitch : String(prefs.pitch);
     if (prefs.style) obj.style = prefs.style;
     return JSON.stringify(obj);
   }
@@ -124,7 +127,9 @@ export function createApi(
     return url;
   }
 
-  async function postTo(node: TtsNode, url: string, body: string): Promise<ArrayBuffer | null> {
+  type PostOutcome = { kind: 'ok'; bytes: ArrayBuffer } | { kind: 'rejected' } | { kind: 'failed' };
+
+  async function postTo(node: TtsNode, url: string, body: string): Promise<PostOutcome> {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), SYNTH_TIMEOUT);
     try {
@@ -134,13 +139,27 @@ export function createApi(
         body,
         signal: ctrl.signal,
       });
-      return r.ok ? await r.arrayBuffer() : null;
+      if (r.ok) return { kind: 'ok', bytes: await r.arrayBuffer() };
+      // 仅 400/415/422 可能是参数格式问题，其余状态码换格式没有意义
+      return r.status === 400 || r.status === 415 || r.status === 422
+        ? { kind: 'rejected' }
+        : { kind: 'failed' };
     } catch (e) {
       console.warn(`POST 失败: ${url}`, e);
-      return null;
+      return { kind: 'failed' };
     } finally {
       clearTimeout(timer);
     }
+  }
+
+  async function postAny(node: TtsNode, url: string, text: string, p: SynthPrefs): Promise<ArrayBuffer | null> {
+    const first = await postTo(node, url, jsonBody(text, p, node.defaultVoice));
+    if (first.kind === 'ok') return first.bytes;
+    if (first.kind === 'rejected') {
+      const second = await postTo(node, url, jsonBody(text, p, node.defaultVoice, true));
+      if (second.kind === 'ok') return second.bytes;
+    }
+    return null;
   }
 
   async function getCompat(node: TtsNode, text: string, p: SynthPrefs): Promise<ArrayBuffer | null> {
@@ -162,10 +181,9 @@ export function createApi(
   }
 
   async function synthesizeOnce(node: TtsNode, text: string, p: SynthPrefs): Promise<ArrayBuffer | null> {
-    const body = jsonBody(text, p, node.defaultVoice);
-    const post1 = await postTo(node, `${node.baseUrl}/api/v1/tts`, body);
+    const post1 = await postAny(node, `${node.baseUrl}/api/v1/tts`, text, p);
     if (post1) return post1;
-    const post2 = await postTo(node, `${node.baseUrl}/tts`, body);
+    const post2 = await postAny(node, `${node.baseUrl}/tts`, text, p);
     if (post2) return post2;
     return getCompat(node, text, p);
   }

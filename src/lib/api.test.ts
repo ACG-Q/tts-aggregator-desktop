@@ -111,6 +111,54 @@ describe('synthesize 三级端点回退', () => {
   });
 });
 
+describe('synthesize 请求体', () => {
+  const node = {
+    id: 'n', baseUrl: BASE, label: '', keyless: true, apiKey: null, health: 'OK' as const,
+    lastChecked: 0, defaultVoice: '', voiceCount: 0, failCount: 0, cooldownUntil: 0,
+    disabled: false, apiVersion: 'V1' as const, source: 'manual' as const,
+  };
+
+  it('默认把 rate/pitch 发成字符串（节点只接受字符串数字）', async () => {
+    const bodies: string[] = [];
+    const impl: FetchImpl = async (_url, init) => {
+      bodies.push(String(init?.body));
+      return new Response(new Uint8Array([1]), { status: 200 });
+    };
+    const api = createApi(impl, async () => {});
+    const bytes = await api.synthesize(node, 'hi', { voice: '', rate: 10, pitch: -5, style: '' }, 1);
+
+    expect(bytes).toBeInstanceOf(ArrayBuffer);
+    expect(JSON.parse(bodies[0])).toMatchObject({ rate: '10', pitch: '-5' });
+  });
+
+  it('节点返回 400 时改用数字再试一次', async () => {
+    const bodies: string[] = [];
+    const impl: FetchImpl = async (_url, init) => {
+      bodies.push(String(init?.body));
+      return bodies.length === 1
+        ? new Response('bad', { status: 400 })
+        : new Response(new Uint8Array([1]), { status: 200 });
+    };
+    const api = createApi(impl, async () => {});
+    const bytes = await api.synthesize(node, 'hi', prefs, 1);
+
+    expect(bytes).toBeInstanceOf(ArrayBuffer);
+    expect(JSON.parse(bodies[1])).toMatchObject({ rate: 0, pitch: 0 });
+  });
+
+  it('401 不重复换格式，直接走下一个端点', async () => {
+    const calls: string[] = [];
+    const impl: FetchImpl = async (url) => {
+      calls.push(url);
+      return new Response('unauthorized', { status: 401 });
+    };
+    const api = createApi(impl, async () => {});
+    await api.synthesize(node, 'hi', prefs, 1);
+
+    expect(calls).toEqual([`${BASE}/api/v1/tts`, `${BASE}/tts`, `${BASE}/tts?text=hi&t=hi&v=&r=0&p=0`]);
+  });
+});
+
 describe('fetchVoices', () => {
   it('v1 失败回退老版 /voices 并解析字段', async () => {
     const { impl } = router({
